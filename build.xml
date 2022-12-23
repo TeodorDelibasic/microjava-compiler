@@ -1,0 +1,29 @@
+
+<project name="MJCompiler" default="compile" basedir=".">
+	
+	<target name="clean">
+		<delete>
+			<fileset dir="src/rs/ac/bg/etf/pp1">
+				<exclude name="sym_manual.java"/>
+				<exclude name="Compiler.java"/>
+			</fileset>
+		</delete>
+	</target>
+
+	<target name="lexerGenerator" depends="clean">
+		<java jar="lib/JFlex.jar" fork="true">
+			<arg value="-d"/>
+			<arg value="./src/rs/ac/bg/etf/pp1"/>
+			<arg value="spec/mjlexer.flex"/>
+		</java>
+	</target>
+	
+	<target name="compile" depends="lexerGenerator">
+		<javac srcdir="src/rs/ac/bg/etf/pp1" includeantruntime="false">
+			<classpath>
+				<pathelement path="lib/JFlex.jar"/>
+			</classpath>
+		</javac>
+	</target>
+	
+</project>
