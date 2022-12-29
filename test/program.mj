@@ -5,7 +5,23 @@ program test
 
 	void main()
 	{
+		if (a || b && c < d) a++;
+		else b++;
 		
+		while (a && c && b) e = a * c;
+		
+		break;
+		continue;
+		
+		return a + b;
+		return;
+		
+		read(a[5]);
+		read(a);
+		read(a.b);
+		
+		print(a);
+		print(a, 5);
 	}
 
 }

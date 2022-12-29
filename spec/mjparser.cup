@@ -58,7 +58,7 @@ terminal CLASS, EXTENDS, NEW, DOT;
 
 terminal EQUAL, PLUS, MINUS, MUL, DIV, MOD, INC, DEC;
 terminal EQ, NE, GT, GE, LT, LE, AND, OR;
-terminal SEMI, COLON, COMMA;
+terminal SEMI, COMMA;
 terminal LPAREN, RPAREN, LCURLY, RCURLY, LSQUARE, RSQUARE;
 
 terminal Integer NUMCONST;
@@ -77,7 +77,7 @@ nonterminal VarDeclStmtList, VarDeclStmt, VarDeclList, VarDecl, VarArray;
 nonterminal ClassDecl, ClassParent, ClassMethods, ConstructorDeclList, ConstructorDecl;
 nonterminal MethodDeclList, MethodDecl, MethodType;
 nonterminal FormPars, FormParList, FormPar, FormParArray;
-nonterminal StatementList, Statement;
+nonterminal StatementList, Statement, ElseOptional, ExprOptional, WidthOptional;
 nonterminal Designator, DesignatorAccessList, DesignatorAccess;
 nonterminal DesignatorStatement, DesignatorModifier, DesignatorOptionalList, DesignatorOptional;
 nonterminal MethodCall, ActPars;
@@ -88,6 +88,7 @@ nonterminal FactorList, Factor, MethodCallOptional, NewObject;
 nonterminal Condition, CondTermList, CondTerm, CondFactList, CondFact, ExprRelop;
 nonterminal Assignop, Addop, Mulop, Relop;
 
+precedence left ELSE;
 
 
 Program 				::= (Program) PROG IDENT:progName DeclStmtList LCURLY MethodDeclList RCURLY;
@@ -204,7 +205,37 @@ StatementList			::= (StatementYes) Statement StatementList
 							(StatementNo) /* epsilon */
 							;
 							
-Statement				::= (Statement) DesignatorStatement SEMI;
+Statement				::= (StatementDesignator) DesignatorStatement SEMI
+							|
+							(StatementIf) IF LPAREN Condition RPAREN Statement ElseOptional
+							|
+							(StatementWhile) WHILE LPAREN Condition RPAREN Statement
+							|
+							(StatementBreak) BREAK SEMI
+							|
+							(StatementContinue) CONTINUE SEMI
+							|
+							(StatementReturn) RETURN ExprOptional SEMI
+							|
+							(StatementRead) READ LPAREN Designator RPAREN SEMI
+							|
+							(StatementPrint) PRINT LPAREN Expr WidthOptional RPAREN SEMI
+							;
+							
+ElseOptional			::= (ElseYes) ELSE Statement
+							|
+							(ElseNo) /* epsilon */
+							;
+							
+ExprOptional			::= (ExprYes) Expr
+							|
+							(ExprNo) /* epsilon */
+							;							
+							
+WidthOptional			::= (WidthYes) COMMA NUMCONST:width
+							|
+							(WidthNo) /* epsilon */
+							;							
 
 //------------------------------------------------------------------------
 
@@ -260,9 +291,9 @@ ActPars					::= (ActParsYes) ExprList
 							
 //------------------------------------------------------------------------							
 
-ExprList				::= (ExprYes) Expr COMMA ExprList
+ExprList				::= (ExprMultiple) Expr COMMA ExprList
 							|
-							(ExprNo) Expr
+							(ExprSingle) Expr
 							;
 
 Expr					::= (Expr) ExprNegative TermList;
