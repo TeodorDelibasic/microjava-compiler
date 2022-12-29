@@ -44,6 +44,7 @@ import java_cup.runtime.Symbol;
 "foreach"	{ return create_symbol(sym.FOREACH, 	yytext()); }
 "continue"	{ return create_symbol(sym.CONTINUE,	yytext()); }
 "break"		{ return create_symbol(sym.BREAK, 		yytext()); }
+"const"		{ return create_symbol(sym.CONST, 		yytext()); }
 "void"		{ return create_symbol(sym.VOID, 		yytext()); }
 "return"	{ return create_symbol(sym.RETURN, 		yytext()); }
 "new"		{ return create_symbol(sym.NEW, 		yytext()); }
@@ -51,7 +52,6 @@ import java_cup.runtime.Symbol;
 "read"		{ return create_symbol(sym.READ, 		yytext()); }
 "class"		{ return create_symbol(sym.CLASS, 		yytext()); }
 "extends"	{ return create_symbol(sym.EXTENDS, 	yytext()); }
-"this"		{ return create_symbol(sym.THIS, 		yytext()); }
 
 "+"		{ return create_symbol(sym.PLUS, 	yytext()); }
 "-"		{ return create_symbol(sym.MINUS, 	yytext()); }
@@ -85,10 +85,10 @@ import java_cup.runtime.Symbol;
 <COMMENT> . 		{ yybegin(COMMENT); }
 <COMMENT> "\r\n" 	{ yybegin(YYINITIAL); }
 
-[0-9]+ 						{ return create_symbol(sym.NUM, Integer.parseInt(yytext())); }
-\'([\x00-\x7F]|\\n|\\t)\'	{ return create_symbol(sym.CHAR, yytext().charAt(1)); }
-(true|false) 				{ return create_symbol(sym.BOOL, Boolean.parseBoolean(yytext())); }
+[0-9]+ 						{ return create_symbol(sym.NUMCONST, 	Integer.parseInt(yytext())); }
+\'([\x00-\x7F]|\\n|\\t)\'	{ return create_symbol(sym.CHARCONST, 	yytext().charAt(1)); }
+(true|false) 				{ return create_symbol(sym.BOOLCONST, 	Boolean.parseBoolean(yytext())); }
 
 [a-zA-Z][a-zA-Z0-9_]* 	{ return create_symbol(sym.IDENT, yytext()); }
 
-. { System.err.println("Leksicka greska (" + yytext() + ") u liniji: " + (yyline + 1)); }
+. { System.err.println("Leksicka greska (" + yytext() + ") u liniji " + (yyline + 1) + " i koloni " + yycolumn); }

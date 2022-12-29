@@ -1,0 +1,6 @@
+1. Nije refreshovan projekat
+2. Nedeklarisan neterminal
+3. Zaboravljeno ;
+4. Greska u ::=
+5. Iskljuciti -buildtree za bolji opis gresaka
+6. Lepo imenovati i organizovati neterminale

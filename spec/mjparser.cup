@@ -1,0 +1,383 @@
+package rs.ac.bg.etf.pp1;
+
+import java_cup.runtime.*;
+import rs.ac.bg.etf.pp1.ast.*;
+
+parser code {:
+
+	boolean errorDetected;
+
+	public void report_fatal_error(String message, Object info) throws java.lang.Exception {
+		done_parsing();
+		report_error(message, info);
+	}
+	
+	public void syntax_error(Symbol current_token) {
+		report_error("Sintaksna greska ", current_token);
+	}
+	
+	public void unrecovered_syntax_error(Symbol current_token) throws java.lang.Exception {
+		report_fatal_error("Fatalna greska ", current_token);
+	}
+	
+	public void report_error(String message, Object info) {
+		errorDetected = true;
+		
+		StringBuilder msg = new StringBuilder(message);
+		
+		if (info instanceof Symbol) {
+			msg.append("na liniji ").append(((Symbol) info).left);
+		}
+		
+		System.err.println(msg.toString());
+	}
+		
+:}
+
+init with {:
+	errorDetected = false;
+:}	
+		
+scan with {:
+	Symbol s = this.getScanner().next_token();
+	
+	if (s != null && s.value != null) {
+		System.out.println(s.toString() + " " + s.value.toString());
+	}
+	
+	return s;
+:}
+
+
+
+terminal PROG;
+terminal IF, ELSE, WHILE, FOREACH, LAMBDA, CONTINUE, BREAK;
+terminal CONST, VOID, RETURN;
+terminal PRINT, READ;
+terminal CLASS, EXTENDS, NEW, DOT;
+
+terminal EQUAL, PLUS, MINUS, MUL, DIV, MOD, INC, DEC;
+terminal EQ, NE, GT, GE, LT, LE, AND, OR;
+terminal SEMI, COLON, COMMA;
+terminal LPAREN, RPAREN, LCURLY, RCURLY, LSQUARE, RSQUARE;
+
+terminal Integer NUMCONST;
+terminal Character CHARCONST;
+terminal Boolean BOOLCONST;
+
+terminal String IDENT;
+
+
+
+nonterminal Program;
+nonterminal Type;
+nonterminal DeclStmtList, DeclStmt;
+nonterminal ConstDeclStmt, ConstDeclList, ConstDecl, ConstVal;
+nonterminal VarDeclStmtList, VarDeclStmt, VarDeclList, VarDecl, VarArray;
+nonterminal ClassDecl, ClassParent, ClassMethods, ConstructorDeclList, ConstructorDecl;
+nonterminal MethodDeclList, MethodDecl, MethodType;
+nonterminal FormPars, FormParList, FormPar, FormParArray;
+nonterminal StatementList, Statement;
+nonterminal Designator, DesignatorAccessList, DesignatorAccess;
+nonterminal DesignatorStatement, DesignatorModifier, DesignatorOptionalList, DesignatorOptional;
+nonterminal MethodCall, ActPars;
+nonterminal ArrayAccess;
+nonterminal ExprList, Expr, ExprNegative;
+nonterminal TermList, Term;
+nonterminal FactorList, Factor, MethodCallOptional, NewObject;
+nonterminal Condition, CondTermList, CondTerm, CondFactList, CondFact, ExprRelop;
+nonterminal Assignop, Addop, Mulop, Relop;
+
+
+
+Program 				::= (Program) PROG IDENT:progName DeclStmtList LCURLY MethodDeclList RCURLY;
+
+//------------------------------------------------------------------------
+
+Type					::= (Type) IDENT:typeName;
+
+//------------------------------------------------------------------------
+	
+DeclStmtList			::= (DeclStmtYes) DeclStmt DeclStmtList
+							|
+							(DeclStmtNo) /* epsilon */
+							;
+						
+DeclStmt				::= (DeclStmtConst) ConstDeclStmt
+							|
+							(DeclStmtVar) VarDeclStmt
+							|
+							(DeclStmtClass) ClassDecl
+							;
+	
+ConstDeclStmt			::= (ConstDeclStmt) CONST Type ConstDeclList SEMI;
+	
+ConstDeclList 			::= (ConstDeclMultiple) ConstDeclList COMMA ConstDecl
+					  		|
+					  		(ConstDeclSingle) ConstDecl
+					  		;
+	
+ConstDecl 				::= (ConstDecl) IDENT:constName EQUAL ConstVal;
+	
+ConstVal				::= (NumConst) NUMCONST:constVal
+							|
+							(CharConst) CHARCONST:constVal
+							|
+							(BoolConst) BOOLCONST:constVal
+							;
+					
+VarDeclStmtList			::= (VarDeclStmtYes) VarDeclStmt VarDeclStmtList
+							|
+							(VarDeclStmtNo) /* epsilon */
+							;						
+					
+VarDeclStmt				::= (VarDeclStmt) Type VarDeclList SEMI;
+
+VarDeclList				::= (VarDeclMultiple) VarDecl COMMA VarDeclList
+							|
+							(VarDeclSingle) VarDecl
+							;
+					
+VarDecl					::= (VarDecl) IDENT:varName VarArray;
+
+VarArray 				::= (VarArrayYes) LSQUARE RSQUARE
+							|
+							(VarArrayNo) /* epsilon */
+							;						
+
+//------------------------------------------------------------------------
+
+ClassDecl				::= (ClassDecl) CLASS IDENT:className ClassParent LCURLY VarDeclStmtList ClassMethods RCURLY;
+
+ClassParent				::= (ClassParentYes) EXTENDS Type
+							|
+							(ClassParentNo) /* epsilon */
+							;						
+							
+ClassMethods			::= (ClassMethodsYes) LCURLY ConstructorDeclList MethodDeclList RCURLY
+							|
+							(ClassMethodsNo) /* epsilon */
+							;
+							
+ConstructorDeclList		::= (ConstructorDeclYes) ConstructorDeclList ConstructorDecl
+							|
+							(ConstructorDeclNo) /* epsilon */
+							;
+
+ConstructorDecl			::= (ConstructorDecl) IDENT:className LPAREN FormPars RPAREN VarDeclStmtList LCURLY StatementList RCURLY;							
+							
+//------------------------------------------------------------------------
+					
+MethodDeclList			::= (MethodDeclYes) MethodDecl MethodDeclList
+							|
+							(MethodDeclNo) /* epsilon */
+							;
+					
+MethodDecl				::= (MethodDecl) MethodType IDENT:methodName LPAREN FormPars RPAREN VarDeclStmtList LCURLY StatementList RCURLY;
+
+MethodType				::= (VoidYes) VOID
+							|
+							(VoidNo) Type
+							;
+							
+FormPars				::= (FormParsYes) FormParList
+							|
+							(FormParsNo) /* epsilon */
+							;
+							
+FormParList				::= (FormParMultiple) FormPar COMMA FormParList
+							|
+							(FormParSingle) FormPar
+							;
+							
+FormPar					::= (FormPar) Type IDENT:formParName FormParArray;
+
+FormParArray			::= (FormParArrayYes) LSQUARE RSQUARE
+							|
+							(FormParArrayNo) /* epsilon */
+							;	
+
+//------------------------------------------------------------------------
+
+StatementList			::= (StatementYes) Statement StatementList
+							|
+							(StatementNo) /* epsilon */
+							;
+							
+Statement				::= (Statement) DesignatorStatement SEMI;
+
+//------------------------------------------------------------------------
+
+Designator				::= (Designator) IDENT:designatorName DesignatorAccessList;
+
+DesignatorAccessList	::= (DesignatorAccessYes) DesignatorAccess DesignatorAccessList
+							|
+							(DesignatorAccessNo) /* epsilon */
+							;	
+							
+DesignatorAccess		::= (DesignatorField) DOT IDENT:fieldName
+							|
+							(DesignatorElement) ArrayAccess
+							;	
+							
+ArrayAccess				::= (ArrayAccess) LSQUARE Expr RSQUARE;			
+							
+//------------------------------------------------------------------------												
+
+DesignatorStatement		::= (DesignatorSingle) Designator DesignatorModifier
+							|
+							(DesignatorMultiple) LSQUARE DesignatorOptionalList RSQUARE Assignop Designator
+							;
+
+
+DesignatorModifier		::= (DesignatorAssignop) Assignop Expr
+							|
+							(DesignatorMethod) MethodCall
+							|
+							(DesignatorInc) INC
+							|
+							(DesignatorDec) DEC
+							;	
+							
+DesignatorOptionalList	::= (DesignatorOptionalMultiple) DesignatorOptional COMMA DesignatorOptionalList
+							|
+							(DesignatorOptionalSingle) DesignatorOptional
+							;
+							
+DesignatorOptional		::= (DesignatorYes) Designator
+							|
+							(DesignatorNo) /* epsilon */
+							;					
+							
+//------------------------------------------------------------------------										 																						
+							
+MethodCall				::= (MethodCall) LPAREN ActPars RPAREN;							
+							
+ActPars					::= (ActParsYes) ExprList
+							|
+							(ActParsNo) /* epsilon */
+							;	
+							
+//------------------------------------------------------------------------							
+
+ExprList				::= (ExprYes) Expr COMMA ExprList
+							|
+							(ExprNo) Expr
+							;
+
+Expr					::= (Expr) ExprNegative TermList;
+
+ExprNegative			::= (ExprNegativeYes) MINUS
+							|
+							(ExprNegativeNo) /* epsilon */
+							;	
+							
+//------------------------------------------------------------------------													
+							
+TermList				::= (TermMultiple) Term Addop TermList
+							|
+							(TermSingle) Term
+							;
+							
+Term 					::= (Term) FactorList;	
+
+//------------------------------------------------------------------------
+
+FactorList				::= (FactorMultiple) Factor Mulop FactorList
+							|
+							(FactorSingle) Factor
+							;
+																				
+Factor					::= (FactorDesignator) Designator MethodCallOptional
+							|
+							(FactorNum) NUMCONST:constVal
+							|
+							(FactorChar) CHARCONST:constVal
+							|
+							(FactorBool) BOOLCONST:constVal
+							|
+							(FactorNew) NEW Type NewObject
+							|
+							(FactorParen) LPAREN Expr RPAREN
+							;
+
+MethodCallOptional		::= (MethodCallYes) MethodCall
+							|
+							(MethodCallNo) /* epsilon */
+							;							
+							
+NewObject				::= (NewArray) ArrayAccess
+							|
+							(NewClass) MethodCall
+							;					
+
+//------------------------------------------------------------------------
+
+Condition				::= (Condition) CondTermList;
+
+CondTermList			::= (CondTermMultiple) CondTerm OR CondTermList
+							|
+							(CondTermSingle) CondTerm
+							;
+							
+CondTerm				::= (CondTerm) CondFactList;
+
+CondFactList			::= (CondFactMultiple) CondFact AND CondFactList
+							|
+							(CondFactSingle) CondFact
+							;
+							
+CondFact				::= (CondFact) Expr ExprRelop;
+
+ExprRelop				::= (ExprRelopYes) Relop Expr
+							|
+							(ExprRelopNo) /* epsilon */
+							;														
+							
+//------------------------------------------------------------------------
+
+Assignop				::= (Assignop) EQUAL;	
+
+Addop					::= (AddopPlus) PLUS
+							|
+							(AddopMinus) MINUS
+							;	
+							
+Mulop					::= (MulopMul) MUL
+							|
+							(MulopDiv) DIV
+							|
+							(MulopMod) MOD
+							;	
+							
+Relop					::= (RelopEq) EQ
+							|																		
+							(RelopNe) NE
+							|
+							(RelopGt) GT
+							|
+							(RelopGe) GE
+							|
+							(RelopLt) LT
+							|
+							(RelopLe) LE
+							;
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
