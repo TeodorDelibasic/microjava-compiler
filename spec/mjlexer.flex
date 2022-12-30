@@ -70,7 +70,6 @@ import java_cup.runtime.Symbol;
 "++"	{ return create_symbol(sym.INC, 	yytext()); }
 "--"	{ return create_symbol(sym.DEC, 	yytext()); }
 ";"		{ return create_symbol(sym.SEMI, 	yytext()); }
-":"		{ return create_symbol(sym.COLON, 	yytext()); }
 ","		{ return create_symbol(sym.COMMA, 	yytext()); }
 "."		{ return create_symbol(sym.DOT, 	yytext()); }
 "("		{ return create_symbol(sym.LPAREN, 	yytext()); }

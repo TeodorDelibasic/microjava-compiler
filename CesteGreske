@@ -4,4 +4,5 @@
 4. Greska u ::=
 5. Iskljuciti -buildtree za bolji opis gresaka
 6. Lepo imenovati i organizovati neterminale
-7. Dodas smenu, pokrenes ant, refreshujes projekat, izmenes program.mj, pokrenes.
+7. Dodas smenu, pokrenes ant, refreshujes projekat, izmenis program.mj, pokrenes
+8. NullPointerException za Program, mozda nemas -buildtree opciju u parserGen

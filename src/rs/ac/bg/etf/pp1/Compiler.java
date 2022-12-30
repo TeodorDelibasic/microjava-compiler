@@ -11,18 +11,18 @@ import rs.ac.bg.etf.pp1.ast.Program;
 public class Compiler {
 	
 	public static void main(String[] args) {
-		File source = new File("test/program.mj");
+		File source = new File("test/test303.mj");
 		try (Reader reader = new BufferedReader(new FileReader(source));) {
 			
 			Yylex lexer = new Yylex(reader);
 			MJParser parser = new MJParser(lexer);
 			
-			parser.parse();
+//			parser.parse();
 			
-//			Symbol symbol = parser.parse();
-//			Program prog = (Program)(symbol.value);
-//			
-//			System.out.println(prog.toString(""));
+			Symbol symbol = parser.parse();
+			Program prog = (Program)(symbol.value);
+			
+			System.out.println(prog.toString(""));
 			
 		} catch (Exception e) {
 			// TODO Auto-generated catch block

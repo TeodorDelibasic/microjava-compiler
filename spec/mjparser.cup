@@ -77,7 +77,7 @@ nonterminal VarDeclStmtList, VarDeclStmt, VarDeclList, VarDecl, VarArray;
 nonterminal ClassDecl, ClassParent, ClassMethods, ConstructorDeclList, ConstructorDecl;
 nonterminal MethodDeclList, MethodDecl, MethodType;
 nonterminal FormPars, FormParList, FormPar, FormParArray;
-nonterminal StatementList, Statement, ElseOptional, ExprOptional, WidthOptional;
+nonterminal StatementList, Statement, ElseOptional, ExprOptional, WidthOptional, DesignatorForeach, DesignatorForeachAccessList;
 nonterminal Designator, DesignatorAccessList, DesignatorAccess;
 nonterminal DesignatorStatement, DesignatorModifier, DesignatorOptionalList, DesignatorOptional;
 nonterminal MethodCall, ActPars;
@@ -89,6 +89,7 @@ nonterminal Condition, CondTermList, CondTerm, CondFactList, CondFact, ExprRelop
 nonterminal Assignop, Addop, Mulop, Relop;
 
 precedence left ELSE;
+
 
 
 Program 				::= (Program) PROG IDENT:progName DeclStmtList LCURLY MethodDeclList RCURLY;
@@ -220,6 +221,10 @@ Statement				::= (StatementDesignator) DesignatorStatement SEMI
 							(StatementRead) READ LPAREN Designator RPAREN SEMI
 							|
 							(StatementPrint) PRINT LPAREN Expr WidthOptional RPAREN SEMI
+							|
+							(StatementForeach) DesignatorForeach LPAREN IDENT:element LAMBDA Statement RPAREN SEMI
+							|
+							(StatementBlock) LCURLY StatementList RCURLY
 							;
 							
 ElseOptional			::= (ElseYes) ELSE Statement
@@ -235,7 +240,14 @@ ExprOptional			::= (ExprYes) Expr
 WidthOptional			::= (WidthYes) COMMA NUMCONST:width
 							|
 							(WidthNo) /* epsilon */
-							;							
+							;	
+							
+DesignatorForeach		::= (DesignatorForeach) IDENT:designatorName DesignatorForeachAccessList;
+
+DesignatorForeachAccessList	::= (DesignatorForeachAccessYes) DesignatorAccess DesignatorForeachAccessList
+								|
+								(DesignatorForeachAccessNo) DOT FOREACH
+								;							 												
 
 //------------------------------------------------------------------------
 
@@ -259,7 +271,6 @@ DesignatorStatement		::= (DesignatorSingle) Designator DesignatorModifier
 							|
 							(DesignatorMultiple) LSQUARE DesignatorOptionalList RSQUARE Assignop Designator
 							;
-
 
 DesignatorModifier		::= (DesignatorAssignop) Assignop Expr
 							|
