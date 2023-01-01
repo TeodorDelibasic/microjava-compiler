@@ -11,11 +11,11 @@ import rs.ac.bg.etf.pp1.ast.Program;
 public class Compiler {
 	
 	public static void main(String[] args) {
-		File source = new File("test/program.mj");
+		File source = new File("test/test303.mj");
 		try (Reader reader = new BufferedReader(new FileReader(source));) {
 			
-			Yylex lexer = new Yylex(reader);
-			MJParser parser = new MJParser(lexer);
+			Lexer lexer = new Lexer(reader);
+			Parser parser = new Parser(lexer);
 			
 //			parser.parse();
 			

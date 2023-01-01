@@ -16,6 +16,8 @@ import java_cup.runtime.Symbol;
 
 %}
 
+%class Lexer
+
 %cup
 %line
 %column
