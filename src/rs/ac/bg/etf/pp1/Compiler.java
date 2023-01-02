@@ -11,13 +11,21 @@ import rs.ac.bg.etf.pp1.ast.Program;
 public class Compiler {
 	
 	public static void main(String[] args) {
-		File source = new File("test/test303.mj");
+		
+		if (args == null || args.length != 1) {
+			return;
+		}
+		
+		File source = new File(args[0]);
+		
 		try (Reader reader = new BufferedReader(new FileReader(source));) {
 			
 			Lexer lexer = new Lexer(reader);
 			Parser parser = new Parser(lexer);
 			
-//			parser.parse();
+			if (parser.errorDetected) {
+				return;
+			}
 			
 			Symbol symbol = parser.parse();
 			Program prog = (Program)(symbol.value);
