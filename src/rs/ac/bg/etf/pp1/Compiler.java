@@ -28,9 +28,23 @@ public class Compiler {
 			}
 			
 			Symbol symbol = parser.parse();
-			Program prog = (Program)(symbol.value);
+			Program program = (Program)(symbol.value);
 			
-			System.out.println(prog.toString(""));
+			System.out.println(program.toString(""));
+			
+			SymbolTable.init();
+			
+			SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer();
+			
+			program.traverseBottomUp(semanticAnalyzer);
+			
+			SymbolTable.dump(new DumpVisitor());
+			
+			if (parser.errorDetected || semanticAnalyzer.hasErrors()) {
+				System.out.println("Neuspesno");
+			} else {
+				System.out.println("Uspesno");
+			}
 			
 		} catch (Exception e) {
 			// TODO Auto-generated catch block

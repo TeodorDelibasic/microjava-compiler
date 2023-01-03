@@ -5,6 +5,9 @@
 		<delete>
 			<fileset dir="src/rs/ac/bg/etf/pp1">
 				<exclude name="Compiler.java"/>
+				<exclude name="SymbolTable.java"/>
+				<exclude name="SemanticAnalyzer.java"/>
+				<exclude name="DumpVisitor.java"/>
 			</fileset>
 		</delete>
 		<delete>
@@ -46,6 +49,7 @@
 			<classpath>
 				<pathelement path="lib/JFlex.jar"/>
 				<pathelement path="lib/cup_v10k.jar"/>
+				<pathelement path="lib/symboltable-1-1.jar"/>
 			</classpath>
 		</javac>
 	</target>
