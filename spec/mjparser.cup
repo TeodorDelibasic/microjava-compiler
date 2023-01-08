@@ -61,30 +61,27 @@ terminal EQ, NE, GT, GE, LT, LE, AND, OR;
 terminal SEMI, COMMA;
 terminal LPAREN, RPAREN, LCURLY, RCURLY, LSQUARE, RSQUARE;
 
-terminal Integer NUMCONST;
-terminal Character CHARCONST;
-terminal Boolean BOOLCONST;
+terminal Integer NUMCONST, CHARCONST, BOOLCONST;
 
 terminal String IDENT;
 
 
 
-nonterminal Program;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj Program, ProgramHeader;
 nonterminal Type;
 nonterminal DeclStmtList, DeclStmt;
 nonterminal ConstDeclStmt, ConstDeclList, ConstDecl, ConstVal;
 nonterminal VarDeclStmtList, VarDeclStmt, VarDeclList, VarDecl, VarArray;
 nonterminal ClassDecl, ClassParent, ClassMethods, ConstructorDeclList, ConstructorDecl;
-nonterminal MethodDeclList, MethodDecl, MethodType;
+nonterminal MethodDeclList, MethodDecl, MethodSignature, MethodHeader, MethodType;
 nonterminal FormPars, FormParList, FormPar, FormParArray;
-nonterminal StatementList, Statement, ElseOptional, ExprOptional, WidthOptional, DesignatorForeach, DesignatorForeachAccessList;
-nonterminal Designator, DesignatorAccessList, DesignatorAccess;
-nonterminal DesignatorStatement, DesignatorModifier, DesignatorOptionalList, DesignatorOptional;
-nonterminal MethodCall, ActPars;
-nonterminal ArrayAccess;
-nonterminal ExprList, Expr, ExprNegative;
+nonterminal StatementList, Statement;
+nonterminal IfCondition, ElseOptional, ElseHeader, WhileHeader, WhileCondition, ExprOptional, WidthOptional;
+nonterminal DesignatorStatement, Designator, PostfixOp, DesignatorList;
+nonterminal ActPars, ExprList;
+nonterminal Expr, ExprNegative;
 nonterminal TermList, Term;
-nonterminal FactorList, Factor, MethodCallOptional, NewObject;
+nonterminal FactorList, Factor;
 nonterminal Condition, CondTermList, CondTerm, CondFactList, CondFact, ExprRelop;
 nonterminal Assignop, Addop, Mulop, Relop;
 
@@ -92,7 +89,9 @@ precedence left ELSE;
 
 
 
-Program 				::= (Program) PROG IDENT:progName DeclStmtList LCURLY MethodDeclList RCURLY;
+Program 				::= (Program) ProgramHeader DeclStmtList LCURLY MethodDeclList RCURLY;
+
+ProgramHeader			::= (ProgramHeader) PROG IDENT:progName;
 
 //------------------------------------------------------------------------
 
@@ -111,6 +110,8 @@ DeclStmt				::= (DeclStmtConst) ConstDeclStmt
 							|
 							(DeclStmtClass) ClassDecl
 							;
+							
+//------------------------------------------------------------------------							
 	
 ConstDeclStmt			::= (ConstDeclStmt) CONST Type ConstDeclList SEMI;
 	
@@ -119,14 +120,14 @@ ConstDeclList 			::= (ConstDeclMultiple) ConstDeclList COMMA ConstDecl
 					  		(ConstDeclSingle) ConstDecl
 					  		;
 	
-ConstDecl 				::= (ConstDecl) IDENT:constName EQUAL ConstVal;
-	
-ConstVal				::= (NumConst) NUMCONST:constVal
+ConstDecl 				::= (ConstDeclNum) IDENT:constName EQUAL NUMCONST:constVal
 							|
-							(CharConst) CHARCONST:constVal
+							(ConstDeclChar) IDENT:constName EQUAL CHARCONST:constVal
 							|
-							(BoolConst) BOOLCONST:constVal
+							(ConstDeclBool) IDENT:constName EQUAL BOOLCONST:constVal
 							;
+							
+//------------------------------------------------------------------------							
 					
 VarDeclStmtList			::= (VarDeclStmtYes) VarDeclStmt VarDeclStmtList
 							|
@@ -175,7 +176,11 @@ MethodDeclList			::= (MethodDeclYes) MethodDecl MethodDeclList
 							(MethodDeclNo) /* epsilon */
 							;
 					
-MethodDecl				::= (MethodDecl) MethodType IDENT:methodName LPAREN FormPars RPAREN VarDeclStmtList LCURLY StatementList RCURLY;
+MethodDecl				::= (MethodDecl) MethodSignature LCURLY StatementList RCURLY;
+
+MethodSignature			::= (MethodSignature) MethodHeader LPAREN FormPars RPAREN VarDeclStmtList;
+
+MethodHeader			::= (MethodHeader) MethodType IDENT:methodName;
 
 MethodType				::= (VoidYes) VOID
 							|
@@ -208,9 +213,9 @@ StatementList			::= (StatementYes) Statement StatementList
 							
 Statement				::= (StatementDesignator) DesignatorStatement SEMI
 							|
-							(StatementIf) IF LPAREN Condition RPAREN Statement ElseOptional
+							(StatementIf) IF IfCondition Statement ElseOptional
 							|
-							(StatementWhile) WHILE LPAREN Condition RPAREN Statement
+							(StatementWhile) WhileHeader WhileCondition Statement
 							|
 							(StatementBreak) BREAK SEMI
 							|
@@ -222,15 +227,23 @@ Statement				::= (StatementDesignator) DesignatorStatement SEMI
 							|
 							(StatementPrint) PRINT LPAREN Expr WidthOptional RPAREN SEMI
 							|
-							(StatementForeach) DesignatorForeach LPAREN IDENT:element LAMBDA Statement RPAREN SEMI
+							(StatementForeach) Designator DOT FOREACH LPAREN IDENT:element LAMBDA Statement RPAREN SEMI
 							|
 							(StatementBlock) LCURLY StatementList RCURLY
 							;
+			
+IfCondition				::= (IfCondition) LPAREN Condition RPAREN;							
 							
-ElseOptional			::= (ElseYes) ELSE Statement
+ElseOptional			::= (ElseYes) ElseHeader Statement
 							|
 							(ElseNo) /* epsilon */
 							;
+							
+ElseHeader				::= (ElseHeader) ELSE;						
+							
+WhileHeader				::= (WhileHeader) WHILE;
+
+WhileCondition			::= (WhileCondition) LPAREN Condition RPAREN;	
 							
 ExprOptional			::= (ExprYes) Expr
 							|
@@ -240,72 +253,53 @@ ExprOptional			::= (ExprYes) Expr
 WidthOptional			::= (WidthYes) COMMA NUMCONST:width
 							|
 							(WidthNo) /* epsilon */
+							;							 												
+
+//------------------------------------------------------------------------											
+
+DesignatorStatement		::= (DesignatorAssignop) Designator Assignop Expr
+							|
+							(DesignatorMethod) Designator LPAREN ActPars RPAREN
+							|
+							(DesignatorPostfixOp) Designator PostfixOp
+							|
+							(DesignatorMultiple) LSQUARE DesignatorList RSQUARE Assignop Designator
 							;	
-							
-DesignatorForeach		::= (DesignatorForeach) IDENT:designatorName DesignatorForeachAccessList;
 
-DesignatorForeachAccessList	::= (DesignatorForeachAccessYes) DesignatorAccess DesignatorForeachAccessList
-								|
-								(DesignatorForeachAccessNo) DOT FOREACH
-								;							 												
-
-//------------------------------------------------------------------------
-
-Designator				::= (Designator) IDENT:designatorName DesignatorAccessList;
-
-DesignatorAccessList	::= (DesignatorAccessYes) DesignatorAccess DesignatorAccessList
+Designator				::= (DesignatorClass) Designator DOT IDENT:fieldName
 							|
-							(DesignatorAccessNo) /* epsilon */
-							;	
-							
-DesignatorAccess		::= (DesignatorField) DOT IDENT:fieldName
+							(DesignatorArray) Designator LSQUARE Expr RSQUARE
 							|
-							(DesignatorElement) ArrayAccess
-							;	
-							
-ArrayAccess				::= (ArrayAccess) LSQUARE Expr RSQUARE;			
-							
-//------------------------------------------------------------------------												
-
-DesignatorStatement		::= (DesignatorSingle) Designator DesignatorModifier
-							|
-							(DesignatorMultiple) LSQUARE DesignatorOptionalList RSQUARE Assignop Designator
-							;
-
-DesignatorModifier		::= (DesignatorAssignop) Assignop Expr
-							|
-							(DesignatorMethod) MethodCall
-							|
-							(DesignatorInc) INC
-							|
-							(DesignatorDec) DEC
-							;	
-							
-DesignatorOptionalList	::= (DesignatorOptionalMultiple) DesignatorOptional COMMA DesignatorOptionalList
-							|
-							(DesignatorOptionalSingle) DesignatorOptional
+							(DesignatorIdent) IDENT:designatorName
 							;
 							
-DesignatorOptional		::= (DesignatorYes) Designator
+PostfixOp				::= (PostfixInc) INC
 							|
-							(DesignatorNo) /* epsilon */
-							;					
+							(PostfixDec) DEC
+							;							
 							
-//------------------------------------------------------------------------										 																						
+DesignatorList			::= (DesignatorPresent) DesignatorList COMMA Designator
+							|
+							(DesignatorSkip) DesignatorList COMMA
+							|
+							(DesignatorDone) Designator
+							|
+							(DesignatorNone) /* epsilon */
+							;				
 							
-MethodCall				::= (MethodCall) LPAREN ActPars RPAREN;							
+//------------------------------------------------------------------------						
 							
 ActPars					::= (ActParsYes) ExprList
 							|
 							(ActParsNo) /* epsilon */
-							;	
-							
-//------------------------------------------------------------------------							
+							;													
 
 ExprList				::= (ExprMultiple) Expr COMMA ExprList
 							|
 							(ExprSingle) Expr
 							;
+
+//------------------------------------------------------------------------
 
 Expr					::= (Expr) ExprNegative TermList;
 
@@ -330,7 +324,9 @@ FactorList				::= (FactorMultiple) Factor Mulop FactorList
 							(FactorSingle) Factor
 							;
 																				
-Factor					::= (FactorDesignator) Designator MethodCallOptional
+Factor					::= (FactorDesignator) Designator
+							|
+							(FactorDesignatorMethod) Designator LPAREN ActPars RPAREN
 							|
 							(FactorNum) NUMCONST:constVal
 							|
@@ -338,20 +334,12 @@ Factor					::= (FactorDesignator) Designator MethodCallOptional
 							|
 							(FactorBool) BOOLCONST:constVal
 							|
-							(FactorNew) NEW Type NewObject
+							(FactorNewClass) NEW Type LPAREN ActPars RPAREN
+							|
+							(FactorNewArray) NEW Type LSQUARE Expr RSQUARE
 							|
 							(FactorParen) LPAREN Expr RPAREN
-							;
-
-MethodCallOptional		::= (MethodCallYes) MethodCall
-							|
-							(MethodCallNo) /* epsilon */
-							;							
-							
-NewObject				::= (NewArray) ArrayAccess
-							|
-							(NewClass) MethodCall
-							;					
+							;		
 
 //------------------------------------------------------------------------
 
