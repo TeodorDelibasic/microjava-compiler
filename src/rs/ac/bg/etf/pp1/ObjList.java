@@ -17,4 +17,8 @@ public class ObjList {
 		return this.objList.size();
 	}
 	
+	public List<Obj> getList() {
+		return this.objList;
+	}
+	
 }

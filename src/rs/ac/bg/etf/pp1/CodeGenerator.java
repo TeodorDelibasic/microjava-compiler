@@ -1,5 +1,7 @@
 package rs.ac.bg.etf.pp1;
 
+import java.util.List;
+
 import rs.ac.bg.etf.pp1.ast.*;
 import rs.etf.pp1.mj.runtime.Code;
 import rs.etf.pp1.symboltable.concepts.Obj;
@@ -83,6 +85,26 @@ public class CodeGenerator extends VisitorAdaptor {
 		Code.store(designatorObj);
 	}
 	
+	@Override
+	public void visit(DesignatorMultiple designatorMultiple) {
+		List<Obj> designatorObjList = designatorMultiple.getDesignatorList().objlist.getList();
+		
+		for (int i = 0; i < designatorObjList.size(); i++) {
+			if (designatorObjList.get(i) != SymbolTable.noObj) {
+				Code.load(designatorMultiple.getDesignator().obj);
+				Code.loadConst(i);
+				
+				if (designatorMultiple.getDesignator().obj.getType().getKind() == Struct.Char) {
+					Code.put(Code.baload);
+				} else {
+					Code.put(Code.aload);
+				}
+				
+				Code.store(designatorObjList.get(i));
+			}
+		}
+	}
+	
 	//------------------------------------------------------------------------
 	
 	@Override
@@ -91,8 +113,8 @@ public class CodeGenerator extends VisitorAdaptor {
 	}
 	
 	@Override
-	public void visit(DesignatorArray designatorArray) {
-		Code.load(designatorArray.getDesignator().obj);
+	public void visit(LoadDesignatorArray loadDesignatorArray) {
+		Code.load(loadDesignatorArray.obj);
 	}
 	
 	//------------------------------------------------------------------------
@@ -115,6 +137,17 @@ public class CodeGenerator extends VisitorAdaptor {
 	@Override
 	public void visit(FactorBool factorBool) {
 		Code.load(factorBool.obj);
+	}
+	
+	@Override
+	public void visit(FactorNewArray factorNewArray) {
+		Code.put(Code.newarray);
+		
+		if (factorNewArray.getType().struct.getKind() == Struct.Char) {
+			Code.put(0);
+		} else {
+			Code.put(1);
+		}
 	}
 	
 	//------------------------------------------------------------------------

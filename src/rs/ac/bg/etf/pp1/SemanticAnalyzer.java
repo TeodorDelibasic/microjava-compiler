@@ -267,6 +267,56 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		}
 	}
 	
+	@Override
+	public void visit(DesignatorMultiple designatorMultiple) {
+		ObjList designatorObjList = designatorMultiple.getDesignatorList().objlist;
+		
+		if (designatorMultiple.getDesignatorList() instanceof DesignatorNone) {
+			designatorObjList = new ObjList();
+		}
+		
+		designatorObjList.getList().forEach(designatorObj -> {
+			if (!this.isAssignable(designatorObj)) {
+				report_error("Can't assign to " + designatorObj.getName(), designatorMultiple);
+			}
+		});
+		
+		if (designatorMultiple.getDesignator().obj.getType().getKind() != Struct.Array) {
+			report_error("Symbol on right side of a multiple assignment must be an array", designatorMultiple);
+			return;
+		}
+		
+		designatorObjList.getList().forEach(designatorObj -> {
+			if (!designatorMultiple.getDesignator().obj.getType().getElemType().assignableTo(designatorObj.getType())) {
+				report_error("Type mismatch for " + designatorObj.getName(), designatorMultiple);
+			}
+		});
+	}
+	
+	@Override
+	public void visit(DesignatorPresent designatorPresent) {
+		designatorPresent.objlist = designatorPresent.getDesignatorList().objlist;
+		designatorPresent.objlist.add(designatorPresent.getDesignator().obj);
+	}
+	
+	@Override
+	public void visit(DesignatorSkip designatorSkip) {
+		designatorSkip.objlist = designatorSkip.getDesignatorList().objlist;
+		designatorSkip.objlist.add(SymbolTable.noObj);
+	}
+	
+	@Override
+	public void visit(DesignatorDone designatorDone) {
+		designatorDone.objlist = new ObjList();
+		designatorDone.objlist.add(designatorDone.getDesignator().obj);
+	}
+	
+	@Override
+	public void visit(DesignatorNone designatorNone) {
+		designatorNone.objlist = new ObjList();
+		designatorNone.objlist.add(SymbolTable.noObj);
+	}
+	
 	//------------------------------------------------------------------------
 	
 	@Override
@@ -307,10 +357,15 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	}
 	
 	@Override
+	public void visit(LoadDesignatorArray loadDesignatorArray) {
+		loadDesignatorArray.obj = loadDesignatorArray.getDesignator().obj;
+	}
+	
+	@Override
 	public void visit(DesignatorArray designatorArray) {
 		designatorArray.obj = SymbolTable.noObj;
 		
-		Obj arrayObj = designatorArray.getDesignator().obj;
+		Obj arrayObj = designatorArray.getLoadDesignatorArray().obj;
 		
 		if (arrayObj.equals(SymbolTable.noObj)) {
 			return;
@@ -330,7 +385,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			return;
 		}
 		
-		designatorArray.obj = new Obj(Obj.Elem, designatorArray.getDesignator().obj.getName() + "[]", arrayType.getElemType());
+		designatorArray.obj = new Obj(Obj.Elem, arrayObj.getName() + "[]", arrayType.getElemType());
 	}
 	
 	//------------------------------------------------------------------------
@@ -370,6 +425,26 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	@Override
 	public void visit(FactorParen factorParen) {
 		factorParen.obj = new Obj(Obj.NO_VALUE, "", factorParen.getExpr().struct);
+	}
+	
+	@Override
+	public void visit(FactorNewArray factorNewArray) {
+		factorNewArray.obj = SymbolTable.noObj;
+		
+		if (factorNewArray.getType().struct == SymbolTable.noType) {
+			return;
+		}
+		
+		if (factorNewArray.getExpr().struct == SymbolTable.noType) {
+			return;
+		}
+		
+		if (factorNewArray.getExpr().struct.getKind() != Struct.Int) {
+			report_error("Array size must be specified with an integer", factorNewArray);
+			return;
+		}
+		
+		factorNewArray.obj = new Obj(Obj.NO_VALUE, "", new Struct(Struct.Array, SymbolTable.intType));
 	}
 	
 	//------------------------------------------------------------------------

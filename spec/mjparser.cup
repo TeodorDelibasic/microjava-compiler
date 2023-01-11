@@ -90,8 +90,9 @@ nonterminal FormParArray;
 nonterminal StatementList, Statement;
 nonterminal IfCondition, ElseOptional, ElseHeader, WhileHeader, WhileCondition, WidthOptional;
 
-nonterminal rs.etf.pp1.symboltable.concepts.Obj Designator;
-nonterminal DesignatorStatement, PostfixOp, DesignatorList;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj Designator, LoadDesignatorArray;
+nonterminal DesignatorStatement, PostfixOp;
+nonterminal rs.ac.bg.etf.pp1.ObjList DesignatorList;
 
 nonterminal ActPars, ExprList;
 
@@ -287,15 +288,17 @@ DesignatorStatement		::= (DesignatorAssignOp) Designator AssignOp Expr
 
 Designator				::= (DesignatorClass) Designator DOT IDENT:fieldName
 							|
-							(DesignatorArray) Designator LSQUARE Expr RSQUARE
+							(DesignatorArray) LoadDesignatorArray LSQUARE Expr RSQUARE
 							|
 							(DesignatorIdent) IDENT:designatorName
 							;
 							
+LoadDesignatorArray		::= (LoadDesignatorArray) Designator;							
+							
 PostfixOp				::= (PostfixInc) INC
 							|
 							(PostfixDec) DEC
-							;							
+							;													
 							
 DesignatorList			::= (DesignatorPresent) DesignatorList COMMA Designator
 							|
