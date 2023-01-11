@@ -9,6 +9,8 @@
 				<exclude name="SemanticAnalyzer.java"/>
 				<exclude name="DumpVisitor.java"/>
 				<exclude name="CodeGenerator.java"/>
+				<exclude name="ObjList.java"/>
+				<exclude name="OpCode.java"/>
 			</fileset>
 		</delete>
 		<delete>
@@ -42,8 +44,8 @@
 	</target>
 	
 	<target name="repackage" depends="parserGenerator">
-			<replace dir="src" value="rs.ac.bg.etf.pp1.ast" token="src.rs.ac.bg.etf.pp1.ast" summary="true"/>
-		</target>
+		<replace dir="src" value="rs.ac.bg.etf.pp1.ast" token="src.rs.ac.bg.etf.pp1.ast" summary="true"/>
+	</target>
 	
 	<target name="compile" depends="repackage">
 		<javac srcdir="src/rs/ac/bg/etf/pp1" includeantruntime="false">
@@ -57,7 +59,7 @@
 	</target>
 	
 	<target name="disasm">
-		<java classname="rs.etf.pp1.mj.runtime-1.1.disasm">
+		<java classname="rs.etf.pp1.mj.runtime.disasm" fork="true">
 			<arg value="test/program.obj"/>
 			<classpath>
 				<pathelement location="lib/mj-runtime-1.1.jar"/>
@@ -65,8 +67,8 @@
 		</java>
 	</target>
 
-	<target name="runObj" depends="disasm" >
-		<java classname="rs.etf.pp1.mj.runtime-1.1.Run">
+	<target name="runObj" depends="disasm">
+		<java classname="rs.etf.pp1.mj.runtime.Run" fork="true">
 			<arg value="test/program.obj"/>
 			<classpath>
 				<pathelement location="lib/mj-runtime-1.1.jar"/>

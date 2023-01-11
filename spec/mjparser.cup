@@ -67,23 +67,43 @@ terminal String IDENT;
 
 
 
-nonterminal rs.etf.pp1.symboltable.concepts.Obj Program, ProgramHeader;
-nonterminal Type;
+nonterminal Program;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj ProgramHeader;
+
+nonterminal rs.etf.pp1.symboltable.concepts.Struct Type;
+
 nonterminal DeclStmtList, DeclStmt;
+
 nonterminal ConstDeclStmt, ConstDeclList, ConstDecl, ConstVal;
+
 nonterminal VarDeclStmtList, VarDeclStmt, VarDeclList, VarDecl, VarArray;
+
 nonterminal ClassDecl, ClassParent, ClassMethods, ConstructorDeclList, ConstructorDecl;
-nonterminal MethodDeclList, MethodDecl, MethodSignature, MethodHeader, MethodType;
-nonterminal FormPars, FormParList, FormPar, FormParArray;
+
+nonterminal rs.etf.pp1.symboltable.concepts.Obj MethodHeader, MethodSignature, MethodDecl;
+nonterminal MethodDeclList, MethodType;
+
+nonterminal rs.ac.bg.etf.pp1.ObjList FormPars, FormParList;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj FormPar;
+nonterminal FormParArray;
+
 nonterminal StatementList, Statement;
-nonterminal IfCondition, ElseOptional, ElseHeader, WhileHeader, WhileCondition, ExprOptional, WidthOptional;
-nonterminal DesignatorStatement, Designator, PostfixOp, DesignatorList;
+nonterminal IfCondition, ElseOptional, ElseHeader, WhileHeader, WhileCondition, WidthOptional;
+
+nonterminal rs.etf.pp1.symboltable.concepts.Obj Designator;
+nonterminal DesignatorStatement, PostfixOp, DesignatorList;
+
 nonterminal ActPars, ExprList;
-nonterminal Expr, ExprNegative;
-nonterminal TermList, Term;
-nonterminal FactorList, Factor;
-nonterminal Condition, CondTermList, CondTerm, CondFactList, CondFact, ExprRelop;
-nonterminal Assignop, Addop, Mulop, Relop;
+
+nonterminal rs.etf.pp1.symboltable.concepts.Struct Expr, TermFirst, Term;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj Factor;
+
+nonterminal Condition, CondTermList, CondTerm, CondFactList, CondFact, ExprRelOp;
+
+nonterminal rs.ac.bg.etf.pp1.OpCode AddOp, MulOp;
+nonterminal AssignOp, RelOp;
+
+
 
 precedence left ELSE;
 
@@ -187,12 +207,14 @@ MethodType				::= (VoidYes) VOID
 							(VoidNo) Type
 							;
 							
+//------------------------------------------------------------------------							
+							
 FormPars				::= (FormParsYes) FormParList
 							|
 							(FormParsNo) /* epsilon */
 							;
 							
-FormParList				::= (FormParMultiple) FormPar COMMA FormParList
+FormParList				::= (FormParMultiple) FormParList COMMA FormPar
 							|
 							(FormParSingle) FormPar
 							;
@@ -221,7 +243,9 @@ Statement				::= (StatementDesignator) DesignatorStatement SEMI
 							|
 							(StatementContinue) CONTINUE SEMI
 							|
-							(StatementReturn) RETURN ExprOptional SEMI
+							(StatementReturnExpr) RETURN Expr SEMI
+							|
+							(StatementReturnVoid) RETURN SEMI
 							|
 							(StatementRead) READ LPAREN Designator RPAREN SEMI
 							|
@@ -243,12 +267,7 @@ ElseHeader				::= (ElseHeader) ELSE;
 							
 WhileHeader				::= (WhileHeader) WHILE;
 
-WhileCondition			::= (WhileCondition) LPAREN Condition RPAREN;	
-							
-ExprOptional			::= (ExprYes) Expr
-							|
-							(ExprNo) /* epsilon */
-							;							
+WhileCondition			::= (WhileCondition) LPAREN Condition RPAREN;							
 							
 WidthOptional			::= (WidthYes) COMMA NUMCONST:width
 							|
@@ -257,13 +276,13 @@ WidthOptional			::= (WidthYes) COMMA NUMCONST:width
 
 //------------------------------------------------------------------------											
 
-DesignatorStatement		::= (DesignatorAssignop) Designator Assignop Expr
+DesignatorStatement		::= (DesignatorAssignOp) Designator AssignOp Expr
 							|
 							(DesignatorMethod) Designator LPAREN ActPars RPAREN
 							|
 							(DesignatorPostfixOp) Designator PostfixOp
 							|
-							(DesignatorMultiple) LSQUARE DesignatorList RSQUARE Assignop Designator
+							(DesignatorMultiple) LSQUARE DesignatorList RSQUARE AssignOp Designator
 							;	
 
 Designator				::= (DesignatorClass) Designator DOT IDENT:fieldName
@@ -301,28 +320,23 @@ ExprList				::= (ExprMultiple) Expr COMMA ExprList
 
 //------------------------------------------------------------------------
 
-Expr					::= (Expr) ExprNegative TermList;
-
-ExprNegative			::= (ExprNegativeYes) MINUS
+Expr					::= (TermSingle) TermFirst
 							|
-							(ExprNegativeNo) /* epsilon */
+							(TermMultiple) Expr AddOp Term
+							;						
+							
+//------------------------------------------------------------------------
+							
+TermFirst				::= (TermPositive) Term
+							|
+							(TermNegative) MINUS Term
 							;	
 							
-//------------------------------------------------------------------------													
-							
-TermList				::= (TermMultiple) Term Addop TermList
+Term 					::= (FactorSingle) Factor
 							|
-							(TermSingle) Term
-							;
-							
-Term 					::= (Term) FactorList;	
+							(FactorMultiple) Term MulOp Factor;	
 
 //------------------------------------------------------------------------
-
-FactorList				::= (FactorMultiple) Factor Mulop FactorList
-							|
-							(FactorSingle) Factor
-							;
 																				
 Factor					::= (FactorDesignator) Designator
 							|
@@ -357,40 +371,40 @@ CondFactList			::= (CondFactMultiple) CondFact AND CondFactList
 							(CondFactSingle) CondFact
 							;
 							
-CondFact				::= (CondFact) Expr ExprRelop;
+CondFact				::= (CondFact) Expr ExprRelOp;
 
-ExprRelop				::= (ExprRelopYes) Relop Expr
+ExprRelOp				::= (ExprRelOpYes) RelOp Expr
 							|
-							(ExprRelopNo) /* epsilon */
+							(ExprRelOpNo) /* epsilon */
 							;														
 							
 //------------------------------------------------------------------------
 
-Assignop				::= (Assignop) EQUAL;	
+AssignOp				::= (AssignOp) EQUAL;	
 
-Addop					::= (AddopPlus) PLUS
+AddOp					::= (AddOpAdd) PLUS
 							|
-							(AddopMinus) MINUS
+							(AddOpSub) MINUS
 							;	
 							
-Mulop					::= (MulopMul) MUL
+MulOp					::= (MulOpMul) MUL
 							|
-							(MulopDiv) DIV
+							(MulOpDiv) DIV
 							|
-							(MulopMod) MOD
-							;	
+							(MulOpRem) MOD
+							;						
 							
-Relop					::= (RelopEq) EQ
+RelOp					::= (RelOpEq) EQ
 							|																		
-							(RelopNe) NE
+							(RelOpNe) NE
 							|
-							(RelopGt) GT
+							(RelOpGt) GT
 							|
-							(RelopGe) GE
+							(RelOpGe) GE
 							|
-							(RelopLt) LT
+							(RelOpLt) LT
 							|
-							(RelopLe) LE
+							(RelOpLe) LE
 							;
 							
 							
