@@ -276,7 +276,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		}
 		
 		designatorObjList.getList().forEach(designatorObj -> {
-			if (!this.isAssignable(designatorObj)) {
+			if (designatorObj != SymbolTable.noObj && !this.isAssignable(designatorObj)) {
 				report_error("Can't assign to " + designatorObj.getName(), designatorMultiple);
 			}
 		});
@@ -287,7 +287,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		}
 		
 		designatorObjList.getList().forEach(designatorObj -> {
-			if (!designatorMultiple.getDesignator().obj.getType().getElemType().assignableTo(designatorObj.getType())) {
+			if (designatorObj != SymbolTable.noObj && !designatorMultiple.getDesignator().obj.getType().getElemType().assignableTo(designatorObj.getType())) {
 				report_error("Type mismatch for " + designatorObj.getName(), designatorMultiple);
 			}
 		});
