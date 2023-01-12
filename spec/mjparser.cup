@@ -94,7 +94,8 @@ nonterminal rs.etf.pp1.symboltable.concepts.Obj Designator, LoadDesignatorArray;
 nonterminal DesignatorStatement, PostfixOp;
 nonterminal rs.ac.bg.etf.pp1.ObjList DesignatorList;
 
-nonterminal ActPars, ExprList;
+nonterminal MethodCall;
+nonterminal rs.ac.bg.etf.pp1.ObjList ActPars, ExprList;
 
 nonterminal rs.etf.pp1.symboltable.concepts.Struct Expr, TermFirst, Term;
 nonterminal rs.etf.pp1.symboltable.concepts.Obj Factor;
@@ -279,7 +280,7 @@ WidthOptional			::= (WidthYes) COMMA NUMCONST:width
 
 DesignatorStatement		::= (DesignatorAssignOp) Designator AssignOp Expr
 							|
-							(DesignatorMethod) Designator LPAREN ActPars RPAREN
+							(DesignatorMethod) MethodCall
 							|
 							(DesignatorPostfixOp) Designator PostfixOp
 							|
@@ -309,7 +310,9 @@ DesignatorList			::= (DesignatorPresent) DesignatorList COMMA Designator
 							(DesignatorNone) /* epsilon */
 							;				
 							
-//------------------------------------------------------------------------						
+//------------------------------------------------------------------------	
+
+MethodCall				::= (MethodCall) Designator LPAREN ActPars RPAREN;					
 							
 ActPars					::= (ActParsYes) ExprList
 							|
@@ -343,7 +346,7 @@ Term 					::= (FactorSingle) Factor
 																				
 Factor					::= (FactorDesignator) Designator
 							|
-							(FactorDesignatorMethod) Designator LPAREN ActPars RPAREN
+							(FactorDesignatorMethod) MethodCall
 							|
 							(FactorNum) NUMCONST:constVal
 							|

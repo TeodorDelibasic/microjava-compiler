@@ -21,4 +21,11 @@ public class ObjList {
 		return this.objList;
 	}
 	
+	public boolean assignableFrom(Obj src, int ind) {
+		return this.objList.get(ind) == SymbolTable.noObj || src.getType().getElemType().assignableTo(this.objList.get(ind).getType());
+	}
+	
+	public boolean assignableTo(Obj dest, int ind) {
+		return this.objList.get(ind) == SymbolTable.noObj || this.objList.get(ind).getType().assignableTo(dest.getType());
+	}
 }

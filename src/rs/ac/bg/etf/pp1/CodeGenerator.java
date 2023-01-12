@@ -10,6 +10,15 @@ import rs.etf.pp1.symboltable.concepts.Struct;
 public class CodeGenerator extends VisitorAdaptor {
 	
 	@Override
+	public void visit(ProgramHeader programHeader) {
+		this.generateOrd();
+		this.generateChr();
+		this.generateLen();
+	}
+	
+	//------------------------------------------------------------------------
+	
+	@Override
 	public void visit(MethodHeader methodHeader) {
 		Obj methodObj = methodHeader.obj;
 		
@@ -38,22 +47,54 @@ public class CodeGenerator extends VisitorAdaptor {
 	//------------------------------------------------------------------------
 	
 	@Override
+	public void visit(MethodCall methodCall) {
+		int dest = methodCall.getDesignator().obj.getAdr() - Code.pc;		
+		
+		Code.put(Code.call);
+		Code.put2(dest);
+	}
+	
+	//------------------------------------------------------------------------
+	
+	@Override
 	public void visit(StatementReturnVoid StatementReturnVoid) {
 		Code.put(Code.exit);
 		Code.put(Code.return_);
 	}
 	
 	@Override
+	public void visit(StatementRead statementRead) {
+		Obj designatorObj = statementRead.getDesignator().obj;
+		
+		if (designatorObj.getType().getKind() == Struct.Char) {
+			Code.put(Code.bread);
+		} else {
+			Code.put(Code.read);
+		}
+		
+		Code.store(designatorObj);
+	}
+	
+	@Override
 	public void visit(StatementPrint statementPrint) {
 		Struct type = statementPrint.getExpr().struct;
 		
+		int width, printIns;
+		
 		if (type.getKind() == Struct.Char) {
-			Code.loadConst(1);
-			Code.put(Code.bprint);
+			width = 1;
+			printIns = Code.bprint;
 		} else {
-			Code.loadConst(5);
-			Code.put(Code.print);
+			width = 5;
+			printIns = Code.print;
 		}
+		
+		if (statementPrint.getWidthOptional() instanceof WidthYes) {
+			width = ((WidthYes) statementPrint.getWidthOptional()).getWidth();
+		}
+		
+		Code.loadConst(width);
+		Code.put(printIns);
 	}
 	
 	//------------------------------------------------------------------------
@@ -61,6 +102,13 @@ public class CodeGenerator extends VisitorAdaptor {
 	@Override
 	public void visit(DesignatorAssignOp designatorAssignop) {
 		Code.store(designatorAssignop.getDesignator().obj);
+	}
+	
+	@Override
+	public void visit(DesignatorMethod designatorMethod) {
+		if (designatorMethod.getMethodCall().getDesignator().obj.getType() != SymbolTable.noType) {
+			Code.put(Code.pop);
+		}
 	}
 
 	@Override
@@ -87,19 +135,16 @@ public class CodeGenerator extends VisitorAdaptor {
 	
 	@Override
 	public void visit(DesignatorMultiple designatorMultiple) {
+		Obj arrayObj = designatorMultiple.getDesignator().obj;
 		List<Obj> designatorObjList = designatorMultiple.getDesignatorList().objlist.getList();
 		
-		for (int i = 0; i < designatorObjList.size(); i++) {
+		int loadArrayElem = (arrayObj.getType().getKind() == Struct.Char ? Code.baload : Code.aload);
+		
+		for (int i = designatorObjList.size() - 1; i >= 0; i--) {
 			if (designatorObjList.get(i) != SymbolTable.noObj) {
-				Code.load(designatorMultiple.getDesignator().obj);
+				Code.load(arrayObj);
 				Code.loadConst(i);
-				
-				if (designatorMultiple.getDesignator().obj.getType().getKind() == Struct.Char) {
-					Code.put(Code.baload);
-				} else {
-					Code.put(Code.aload);
-				}
-				
+				Code.put(loadArrayElem);
 				Code.store(designatorObjList.get(i));
 			}
 		}
@@ -169,6 +214,37 @@ public class CodeGenerator extends VisitorAdaptor {
 	@Override
 	public void visit(TermMultiple termMultiple) {
 		Code.put(termMultiple.getAddOp().opcode.getOpCode());
+	}
+	
+	//------------------------------------------------------------------------
+	
+	private void generateOrd() {
+		Code.put(Code.enter);
+		Code.put(1);
+		Code.put(1);
+		
+		Code.put(Code.exit);
+		Code.put(Code.return_);
+	}
+	
+	private void generateChr() {
+		Code.put(Code.enter);
+		Code.put(1);
+		Code.put(1);
+		
+		Code.put(Code.exit);
+		Code.put(Code.return_);
+	}
+	
+	private void generateLen() {
+		Code.put(Code.enter);
+		Code.put(1);
+		Code.put(1);
+		
+		Code.put(Code.arraylength);
+		
+		Code.put(Code.exit);
+		Code.put(Code.return_);
 	}
 	
 }

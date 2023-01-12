@@ -8,7 +8,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	public int nVars = 0;
 	public Struct currentType = SymbolTable.noType;
-	public Struct methodType;
+	public Struct methodType = null;
 	
 	//------------------------------------------------------------------------
 	
@@ -119,6 +119,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	@Override
 	public void visit(MethodHeader methodHeader) {
+		methodHeader.obj = SymbolTable.noObj;
+		
 		String methodName = methodHeader.getMethodName();
 		
 		if (this.symbolExists(methodName, methodHeader)) {
@@ -145,7 +147,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(MethodDecl methodDecl) {
 		methodDecl.obj = methodDecl.getMethodSignature().obj;
 		
-		if (methodDecl.obj == null) {
+		if (methodDecl.obj == SymbolTable.noObj) {
 			return;
 		}
 		
@@ -207,9 +209,94 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	//------------------------------------------------------------------------
 	
 	@Override
+	public void visit(MethodCall methodCall) {
+		Obj methodObj = methodCall.getDesignator().obj;
+		
+		if (methodObj.equals(SymbolTable.noObj)) {
+			return;
+		}
+		
+		if (methodObj.getKind() != Obj.Meth) {
+			report_error("Symbol " + methodObj.getName() + " is not a method or a function", methodCall);
+			return;
+		}
+		
+		ObjList paramList = methodCall.getActPars().objlist;
+		
+		if (paramList.size() != methodObj.getLevel()) {
+			report_error("Invalid number of arguments for method" + methodObj.getName(), methodCall);
+			return;
+		}
+		
+		for (Obj arg : methodObj.getLocalSymbols()) {
+			if (!paramList.assignableTo(arg, arg.getFpPos())) {
+				report_error("Type mismatch for " + arg.getFpPos() + ". argument", methodCall);
+				return;
+			}
+		}
+	}
+	
+	@Override
+	public void visit(ActParsYes actParsYes) {
+		actParsYes.objlist = actParsYes.getExprList().objlist;
+	}
+	
+	@Override
+	public void visit(ActParsNo actParsNo) {
+		actParsNo.objlist = new ObjList();
+	}
+	
+	@Override
+	public void visit(ExprMultiple exprMultiple) {
+		exprMultiple.objlist = exprMultiple.getExprList().objlist;
+		exprMultiple.objlist.add(new Obj(Obj.NO_VALUE, "", exprMultiple.getExpr().struct));
+	}
+	
+	@Override
+	public void visit(ExprSingle exprSingle) {
+		exprSingle.objlist = new ObjList();
+		exprSingle.objlist.add(new Obj(Obj.NO_VALUE, "", exprSingle.getExpr().struct));
+	}
+	
+	//------------------------------------------------------------------------
+	
+	@Override
 	public void visit(StatementReturnVoid statementReturnVoid) {
 		if (!this.methodType.equals(SymbolTable.noType)) {
 			report_error("Non-void method must return an expression", statementReturnVoid);
+		}
+	}
+	
+	@Override
+	public void visit(StatementReturnExpr statementReturnExpr) {
+		if (this.methodType == null) {
+			return;
+		}
+		
+		Struct exprType = statementReturnExpr.getExpr().struct;
+		
+		if (exprType == SymbolTable.noType) {
+			return;
+		}
+		
+		if (!this.methodType.equals(exprType)) {
+			report_error("Type of returned expression must be equal to method type", statementReturnExpr);
+			return;
+		}
+	}
+	
+	@Override
+	public void visit(StatementRead statementRead) {
+		Obj designatorObj = statementRead.getDesignator().obj;
+		
+		if (!this.isAssignable(designatorObj)) {
+			report_error("Can't assign to " + designatorObj.getName(), statementRead);
+			return;
+		}
+		
+		if (!this.isBuiltin(designatorObj.getType())) {
+			report_error("Only builtin types can be read", statementRead);
+			return;
 		}
 	}
 	
@@ -281,16 +368,18 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			}
 		});
 		
-		if (designatorMultiple.getDesignator().obj.getType().getKind() != Struct.Array) {
+		Obj arrayObj = designatorMultiple.getDesignator().obj;
+		
+		if (arrayObj.getType().getKind() != Struct.Array) {
 			report_error("Symbol on right side of a multiple assignment must be an array", designatorMultiple);
 			return;
 		}
 		
-		designatorObjList.getList().forEach(designatorObj -> {
-			if (designatorObj != SymbolTable.noObj && !designatorMultiple.getDesignator().obj.getType().getElemType().assignableTo(designatorObj.getType())) {
-				report_error("Type mismatch for " + designatorObj.getName(), designatorMultiple);
+		for (int ind = 0; ind < designatorObjList.size(); ind++) {
+			if (!designatorObjList.assignableFrom(arrayObj, ind)) {
+				report_error("Type mismatch for " + designatorObjList.getList().get(ind).getName(), designatorMultiple);
 			}
-		});
+		}
 	}
 	
 	@Override
@@ -398,28 +487,25 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	@Override
 	public void visit(FactorNum factorNum) {
 		int adr = factorNum.getConstVal();
-		int level = (this.methodType != null ? 1 : 0);
 		String name = Integer.toString(adr);
 		
-		factorNum.obj = new Obj(Obj.Con, name, SymbolTable.intType, adr, level);
+		factorNum.obj = new Obj(Obj.Con, name, SymbolTable.intType, adr, 1);
 	}
 	
 	@Override
 	public void visit(FactorChar factorChar) {
 		int adr = factorChar.getConstVal();
-		int level = (this.methodType != null ? 1 : 0);
 		String name = Integer.toString(adr);
 		
-		factorChar.obj = new Obj(Obj.Con, name, SymbolTable.charType, adr, level);
+		factorChar.obj = new Obj(Obj.Con, name, SymbolTable.charType, adr, 1);
 	}
 	
 	@Override
 	public void visit(FactorBool factorBool) {
 		int adr = factorBool.getConstVal();
-		int level = (this.methodType != null ? 1 : 0);
 		String name = Integer.toString(adr);
 		
-		factorBool.obj = new Obj(Obj.Con, name, SymbolTable.boolType, adr, level);
+		factorBool.obj = new Obj(Obj.Con, name, SymbolTable.boolType, adr, 1);
 	}
 	
 	@Override
@@ -444,7 +530,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			return;
 		}
 		
-		factorNewArray.obj = new Obj(Obj.NO_VALUE, "", new Struct(Struct.Array, SymbolTable.intType));
+		factorNewArray.obj = new Obj(Obj.NO_VALUE, "", new Struct(Struct.Array, factorNewArray.getType().struct));
 	}
 	
 	//------------------------------------------------------------------------
