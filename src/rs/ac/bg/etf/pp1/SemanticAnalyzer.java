@@ -485,6 +485,11 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	}
 	
 	@Override
+	public void visit(FactorDesignatorMethod factorDesignatorMethod) {
+		factorDesignatorMethod.obj = factorDesignatorMethod.getMethodCall().getDesignator().obj;
+	}
+	
+	@Override
 	public void visit(FactorNum factorNum) {
 		int adr = factorNum.getConstVal();
 		String name = Integer.toString(adr);

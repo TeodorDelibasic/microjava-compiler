@@ -74,7 +74,7 @@ nonterminal rs.etf.pp1.symboltable.concepts.Struct Type;
 
 nonterminal DeclStmtList, DeclStmt;
 
-nonterminal ConstDeclStmt, ConstDeclList, ConstDecl, ConstVal;
+nonterminal ConstDeclStmt, ConstDeclList, ConstDecl;
 
 nonterminal VarDeclStmtList, VarDeclStmt, VarDeclList, VarDecl, VarArray;
 
@@ -100,7 +100,7 @@ nonterminal rs.ac.bg.etf.pp1.ObjList ActPars, ExprList;
 nonterminal rs.etf.pp1.symboltable.concepts.Struct Expr, TermFirst, Term;
 nonterminal rs.etf.pp1.symboltable.concepts.Obj Factor;
 
-nonterminal Condition, CondTermList, CondTerm, CondFactList, CondFact, ExprRelOp;
+nonterminal Condition, CondTerm, CondFact;
 
 nonterminal rs.ac.bg.etf.pp1.OpCode AddOp, MulOp;
 nonterminal AssignOp, RelOp;
@@ -363,26 +363,20 @@ Factor					::= (FactorDesignator) Designator
 
 //------------------------------------------------------------------------
 
-Condition				::= (Condition) CondTermList;
-
-CondTermList			::= (CondTermMultiple) CondTerm OR CondTermList
+Condition				::= (CondTermMultiple) CondTerm OR Condition
 							|
 							(CondTermSingle) CondTerm
 							;
 							
-CondTerm				::= (CondTerm) CondFactList;
-
-CondFactList			::= (CondFactMultiple) CondFact AND CondFactList
+CondTerm				::= (CondFactMultiple) CondFact AND CondTerm
 							|
 							(CondFactSingle) CondFact
 							;
 							
-CondFact				::= (CondFact) Expr ExprRelOp;
-
-ExprRelOp				::= (ExprRelOpYes) RelOp Expr
+CondFact				::= (CondExpr) Expr
 							|
-							(ExprRelOpNo) /* epsilon */
-							;														
+							(CondRelOp) Expr RelOp Expr
+							;													
 							
 //------------------------------------------------------------------------
 

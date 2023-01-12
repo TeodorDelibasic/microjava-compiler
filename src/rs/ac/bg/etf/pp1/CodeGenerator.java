@@ -63,6 +63,12 @@ public class CodeGenerator extends VisitorAdaptor {
 	}
 	
 	@Override
+	public void visit(StatementReturnExpr statementReturnExpr) {
+		Code.put(Code.exit);
+		Code.put(Code.return_);
+	}
+	
+	@Override
 	public void visit(StatementRead statementRead) {
 		Obj designatorObj = statementRead.getDesignator().obj;
 		
@@ -219,31 +225,22 @@ public class CodeGenerator extends VisitorAdaptor {
 	//------------------------------------------------------------------------
 	
 	private void generateOrd() {
-		Code.put(Code.enter);
-		Code.put(1);
-		Code.put(1);
+		SymbolTable.find("ord").setAdr(Code.pc);
 		
-		Code.put(Code.exit);
 		Code.put(Code.return_);
 	}
 	
 	private void generateChr() {
-		Code.put(Code.enter);
-		Code.put(1);
-		Code.put(1);
+		SymbolTable.find("chr").setAdr(Code.pc);
 		
-		Code.put(Code.exit);
 		Code.put(Code.return_);
 	}
 	
 	private void generateLen() {
-		Code.put(Code.enter);
-		Code.put(1);
-		Code.put(1);
+		SymbolTable.find("len").setAdr(Code.pc);
 		
 		Code.put(Code.arraylength);
 		
-		Code.put(Code.exit);
 		Code.put(Code.return_);
 	}
 	
