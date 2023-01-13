@@ -6,10 +6,16 @@ import rs.etf.pp1.symboltable.concepts.*;
 
 public class SemanticAnalyzer extends VisitorAdaptor {
 	
-	public int nVars = 0;
+	private int nVars = 0;
 	
-	public Struct currentType = SymbolTable.noType;
-	public Struct methodType = null;
+	public int getDataSize() {
+		return this.nVars;
+	}
+	
+	//------------------------------------------------------------------------
+	
+	private Struct currentType = SymbolTable.noType;
+	private Struct methodType = null;
 	
 	//------------------------------------------------------------------------
 	
@@ -315,6 +321,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		}
 	}
 	
+	//------------------------------------------------------------------------
+	
 	private int inLoop = 0;
 	
 	@Override
@@ -332,6 +340,20 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			return;
 		}
 	}
+	
+	//------------------------------------------------------------------------
+	
+	@Override
+	public void visit(WhileHeader whileHeader) {
+		this.inLoop++;
+	}
+	
+	@Override
+	public void visit(StatementWhile statementWhile) {
+		this.inLoop--;
+	}
+	
+	//------------------------------------------------------------------------
 	
 	@Override
 	public void visit(ForeachHeader foreachHeader) {
@@ -773,7 +795,11 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	//------------------------------------------------------------------------
 	
-	public boolean errorDetected = false;
+	private boolean errorDetected = false;
+	
+	public boolean hasErrors() {
+		return this.errorDetected;
+	}
 	
 	private void report_error(String message, SyntaxNode info) {
 		errorDetected = true;

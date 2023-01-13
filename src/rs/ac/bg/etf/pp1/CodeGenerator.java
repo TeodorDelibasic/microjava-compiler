@@ -1,6 +1,5 @@
 package rs.ac.bg.etf.pp1;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 
@@ -70,6 +69,8 @@ public class CodeGenerator extends VisitorAdaptor {
 		Code.put(Code.return_);
 	}
 	
+	//------------------------------------------------------------------------
+	
 	@Override
 	public void visit(StatementRead statementRead) {
 		Obj designatorObj = statementRead.getDesignator().obj;
@@ -107,102 +108,114 @@ public class CodeGenerator extends VisitorAdaptor {
 	
 	//------------------------------------------------------------------------
 	
-	private Stack<Integer> loopJmpStart = new Stack<>();
-	private Stack<Integer> jmpEndFixup = new Stack<>(); 
+	private Stack<Stack<Integer>> falseCondFactJmpAdr = new Stack<>();
+	private Stack<Stack<Integer>> trueCondTermJmpAdr = new Stack<>();
+	private Stack<Stack<Integer>> breakJmpAdr = new Stack<>();
 	
-	private Stack<Stack<Integer>> falseCondFactFixup = new Stack<>();
-	private Stack<Stack<Integer>> trueCondTermFixup = new Stack<>();
+	private Stack<Integer> loopStartJmpAdr = new Stack<>();
+	private Stack<Integer> foreachEndJmpAdr = new Stack<>(); 
+	private Stack<Integer> skipElseJmpAdr = new Stack<>();
 	
-	private Stack<Stack<Integer>> breakFixupEnd = new Stack<>();
+	//------------------------------------------------------------------------
+	
+	private void fixupFalseCondFact() {
+		Stack<Integer> currentFalseCondFactFixup = this.falseCondFactJmpAdr.pop();
+		
+		for (int fixupAdr : currentFalseCondFactFixup) {
+			Code.fixup(fixupAdr);
+		}
+	}
+	
+	private void fixupTrueCondTerm() {
+		Stack<Integer> currentTrueCondTermFixup = this.trueCondTermJmpAdr.pop();
+		
+		for (int fixupAdr : currentTrueCondTermFixup) {
+			Code.fixup(fixupAdr);
+		}
+	}
+	
+	private void fixupBreak() {
+		Stack<Integer> currentBreakFixup = this.breakJmpAdr.pop();
+		
+		for (int fixupAdr : currentBreakFixup) {
+			Code.fixup(fixupAdr);
+		}
+	}
 	
 	//------------------------------------------------------------------------
 	
 	@Override
 	public void visit(CondStart condStart) {
-		this.falseCondFactFixup.push(new Stack<>());
-		this.trueCondTermFixup.push(new Stack<>());
+		this.falseCondFactJmpAdr.push(new Stack<>());
+		this.trueCondTermJmpAdr.push(new Stack<>());
 	}
 	
 	@Override
 	public void visit(CondExpr condExpr) {
+		Code.loadConst(1);
 		Code.putFalseJump(Code.eq, 0);
-		this.falseCondFactFixup.peek().push(Code.pc - 2);
+		this.falseCondFactJmpAdr.peek().push(Code.pc - 2);
 	}
 	
 	@Override
 	public void visit(CondRelOp condRelOp) {
 		Code.putFalseJump(condRelOp.getRelOp().opcode.getOpCode(), 0);
-		this.falseCondFactFixup.peek().push(Code.pc - 2);
+		this.falseCondFactJmpAdr.peek().push(Code.pc - 2);
 	}
 	
 	@Override
 	public void visit(CondFactSingle condFactSingle) {
 		Code.putJump(0);
-		this.trueCondTermFixup.peek().push(Code.pc - 2);
+		this.trueCondTermJmpAdr.peek().push(Code.pc - 2);
 	}
 	
 	@Override
 	public void visit(CondTermSingle condTermSingle) {
-		Stack<Integer> currentConditionFixup = this.trueCondTermFixup.pop();
+		Code.pc = Code.pc - 3;
 		
-		for (int conditionFixup : currentConditionFixup) {
-			Code.fixup(conditionFixup);
-		}
+		this.fixupTrueCondTerm();
 	}
 	
 	@Override
 	public void visit(Or or) {
-		Stack<Integer> currentCondTermFixup = this.falseCondFactFixup.pop();
-		
-		for (int termFixup : currentCondTermFixup) {
-			Code.fixup(termFixup);
-		}
-		
-		this.falseCondFactFixup.push(new Stack<>());
+		this.fixupFalseCondFact();
+		this.falseCondFactJmpAdr.push(new Stack<>());
 	}
 	
 	//------------------------------------------------------------------------
 	
 	@Override
-	public void visit(ElseHeader elseHeader) {
-		Stack<Integer> currentCondTermFixup = this.falseCondFactFixup.pop();
-		
-		for (int termFixup : currentCondTermFixup) {
-			Code.fixup(termFixup);
-		}
+	public void visit(StatementIf statementIf) {
+		this.fixupFalseCondFact();
 	}
 	
 	@Override
-	public void visit(StatementIf statementIf) {
-		Stack<Integer> currentCondTermFixup = this.falseCondFactFixup.pop();
+	public void visit(ElseHeader elseHeader) {
+		Code.putJump(0);
+		this.skipElseJmpAdr.push(Code.pc - 2);
 		
-		for (int termFixup : currentCondTermFixup) {
-			Code.fixup(termFixup);
-		}
+		this.fixupFalseCondFact();
+	}
+	
+	@Override
+	public void visit(StatementIfElse statementIfElse) {
+		Code.fixup(this.skipElseJmpAdr.pop());
 	}
 	
 	//------------------------------------------------------------------------
 	
 	@Override
 	public void visit(WhileHeader whileHeader) {
-		this.loopJmpStart.push(Code.pc);
+		this.loopStartJmpAdr.push(Code.pc);
+		this.breakJmpAdr.push(new Stack<>());
 	}
 	
 	@Override
 	public void visit(StatementWhile statementWhile) {
-		Code.putJump(this.loopJmpStart.pop());
-		
-		Stack<Integer> currentCondTermFixup = this.falseCondFactFixup.pop();
-		
-		for (int breakFixup : currentCondTermFixup) {
-			Code.fixup(breakFixup);
-		}
-		
-		Stack<Integer> currentLoopBreakFixup = this.breakFixupEnd.pop();
-		
-		for (int breakFixup : currentLoopBreakFixup) {
-			Code.fixup(breakFixup);
-		}
+		Code.putJump(this.loopStartJmpAdr.pop());
+
+		this.fixupFalseCondFact();
+		this.fixupBreak();
 	}
 	
 	//------------------------------------------------------------------------
@@ -216,11 +229,13 @@ public class CodeGenerator extends VisitorAdaptor {
 		} else {
 			arrayLoadIns = Code.aload;
 		}
+		
+		this.breakJmpAdr.push(new Stack<>());
 
 		Code.load(foreachHeader.getDesignator().obj);
 		Code.put(Code.const_m1);
 		
-		this.loopJmpStart.push(Code.pc);
+		this.loopStartJmpAdr.push(Code.pc);
 		
 		Code.put(Code.const_1);
 		Code.put(Code.add);
@@ -231,27 +246,21 @@ public class CodeGenerator extends VisitorAdaptor {
 		Code.put(Code.arraylength);
 		Code.putFalseJump(Code.ne, 0);
 		
-		this.jmpEndFixup.push(Code.pc - 2);
+		this.foreachEndJmpAdr.push(Code.pc - 2);
 		
 		Code.put(arrayLoadIns);
 		Code.store(foreachHeader.obj);
-		
-		this.breakFixupEnd.push(new Stack<>());
 	}
 	
 	@Override
 	public void visit(StatementForeach statementForeach) {
-		Code.putJump(this.loopJmpStart.pop());
-		Code.fixup(this.jmpEndFixup.pop());
+		Code.putJump(this.loopStartJmpAdr.pop());
+		Code.fixup(this.foreachEndJmpAdr.pop());
 		
 		Code.put(Code.pop);
 		Code.put(Code.pop);
 		
-		Stack<Integer> currentLoopBreakFixup = this.breakFixupEnd.pop();
-		
-		for (int breakFixup : currentLoopBreakFixup) {
-			Code.fixup(breakFixup);
-		}
+		this.fixupBreak();
 		
 		Code.put(Code.pop);
 		Code.put(Code.pop);
@@ -261,14 +270,14 @@ public class CodeGenerator extends VisitorAdaptor {
 	
 	@Override
 	public void visit(StatementContinue statementContinue) {
-		Code.putJump(this.loopJmpStart.peek());
+		Code.putJump(this.loopStartJmpAdr.peek());
 	}
 	
 	@Override
 	public void visit(StatementBreak statementBreak) {
 		Code.putJump(0);
 		
-		this.breakFixupEnd.peek().push(Code.pc - 2);
+		this.breakJmpAdr.peek().push(Code.pc - 2);
 	}
 	
 	//------------------------------------------------------------------------
@@ -376,14 +385,10 @@ public class CodeGenerator extends VisitorAdaptor {
 		Code.put(factorMultiple.getMulOp().opcode.getOpCode());
 	}
 	
-	//------------------------------------------------------------------------
-	
 	@Override
 	public void visit(TermNegative termNegative) {
 		Code.put(Code.neg);
 	}
-	
-	//------------------------------------------------------------------------
 	
 	@Override
 	public void visit(TermMultiple termMultiple) {
@@ -408,7 +413,6 @@ public class CodeGenerator extends VisitorAdaptor {
 		SymbolTable.find("len").setAdr(Code.pc);
 		
 		Code.put(Code.arraylength);
-		
 		Code.put(Code.return_);
 	}	
 }

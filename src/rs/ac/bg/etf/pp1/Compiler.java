@@ -43,7 +43,7 @@ public class Compiler {
 			
 			SymbolTable.dump(new DumpVisitor());
 			
-			if (parser.errorDetected || semanticAnalyzer.errorDetected) {
+			if (parser.errorDetected || semanticAnalyzer.hasErrors()) {
 				System.out.println("Neuspesno");
 				return;
 			}
@@ -54,7 +54,7 @@ public class Compiler {
 			
 			program.traverseBottomUp(codeGenerator);
 			
-			Code.dataSize = semanticAnalyzer.nVars;
+			Code.dataSize = semanticAnalyzer.getDataSize();
 			Code.write(new FileOutputStream(destination));
 			
 			System.out.println("Uspesno");
