@@ -7,6 +7,7 @@ import rs.etf.pp1.symboltable.concepts.*;
 public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	public int nVars = 0;
+	
 	public Struct currentType = SymbolTable.noType;
 	public Struct methodType = null;
 	
@@ -314,6 +315,59 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		}
 	}
 	
+	private int inLoop = 0;
+	
+	@Override
+	public void visit(StatementContinue statementContinue) {
+		if (this.inLoop == 0) {
+			report_error("Continue can only be used within a loop", statementContinue);
+			return;
+		}
+	}
+	
+	@Override
+	public void visit(StatementBreak statementBreak) {
+		if (this.inLoop == 0) {
+			report_error("Break can only be used within a loop", statementBreak);
+			return;
+		}
+	}
+	
+	@Override
+	public void visit(ForeachHeader foreachHeader) {
+		this.inLoop++;
+		
+		Obj arrayObj = foreachHeader.getDesignator().obj;
+		
+		if (arrayObj == SymbolTable.noObj) {
+			return;
+		}
+		
+		if (arrayObj.getType().getKind() != Struct.Array) {
+			report_error("Foreach can be called for arrays only", foreachHeader);
+			return;
+		}
+		
+		String elemName = foreachHeader.getElement();
+		
+		foreachHeader.obj = SymbolTable.find(elemName);
+		
+		if (foreachHeader.obj.getKind() != Obj.Var || foreachHeader.obj == SymbolTable.noObj) {
+			report_error(elemName + " must be a local or global variable", foreachHeader);
+			return;
+		}
+		
+		if (!foreachHeader.obj.getType().equals(arrayObj.getType().getElemType())) {
+			report_error("Type mismatch", foreachHeader);
+			return;
+		}
+	}
+	
+	@Override
+	public void visit(StatementForeach statementForeach) {
+		this.inLoop--;
+	}
+	
 	//------------------------------------------------------------------------
 	
 	@Override
@@ -611,6 +665,70 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		}
 		
 		termMultiple.struct = SymbolTable.intType;
+	}
+	
+	//------------------------------------------------------------------------
+	
+	@Override
+	public void visit(CondExpr condExpr) {
+		if (condExpr.getExpr().struct.getKind() == Struct.None) {
+			return;
+		}
+		
+		if (condExpr.getExpr().struct != SymbolTable.boolType) {
+			report_error("Expression in condition must be boolean", condExpr);
+			return;
+		}
+	}
+	
+	@Override
+	public void visit(CondRelOp condRelOp) {
+		Struct leftType = condRelOp.getExpr().struct;
+		Struct rightType = condRelOp.getExpr1().struct;
+		
+		if (leftType.getKind() == Struct.None || rightType.getKind() == Struct.None) {
+			return;
+		}
+		
+		if (!leftType.compatibleWith(rightType)) {
+			report_error("Types must be compatible to be compared to each other", condRelOp);
+		}
+		
+		if ((leftType.isRefType() || rightType.isRefType()) && condRelOp.getRelOp().opcode.getOpCode() > Code.ne) {
+			report_error("Only == and != are valid for reference types", condRelOp);
+		}
+	}
+	
+	//------------------------------------------------------------------------
+	
+	@Override
+	public void visit(RelOpEq relOpEq) {
+		relOpEq.opcode = new OpCode(Code.eq);
+	}
+	
+	@Override
+	public void visit(RelOpNe relOpNe) {
+		relOpNe.opcode = new OpCode(Code.ne);
+	}
+	
+	@Override
+	public void visit(RelOpGt relOpGt) {
+		relOpGt.opcode = new OpCode(Code.gt);
+	}
+	
+	@Override
+	public void visit(RelOpGe relOpGe) {
+		relOpGe.opcode = new OpCode(Code.ge);
+	}
+	
+	@Override
+	public void visit(RelOpLt relOpLt) {
+		relOpLt.opcode = new OpCode(Code.lt);
+	}
+	
+	@Override
+	public void visit(RelOpLe relOpLe) {
+		relOpLe.opcode = new OpCode(Code.le);
 	}
 	
 	//------------------------------------------------------------------------

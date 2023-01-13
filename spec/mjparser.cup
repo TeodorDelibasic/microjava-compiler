@@ -88,7 +88,9 @@ nonterminal rs.etf.pp1.symboltable.concepts.Obj FormPar;
 nonterminal FormParArray;
 
 nonterminal StatementList, Statement;
-nonterminal IfCondition, ElseOptional, ElseHeader, WhileHeader, WhileCondition, WidthOptional;
+nonterminal CondStart, ElseHeader, WhileHeader;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj ForeachHeader;
+nonterminal WidthOptional;
 
 nonterminal rs.etf.pp1.symboltable.concepts.Obj Designator, LoadDesignatorArray;
 nonterminal DesignatorStatement, PostfixOp;
@@ -100,10 +102,10 @@ nonterminal rs.ac.bg.etf.pp1.ObjList ActPars, ExprList;
 nonterminal rs.etf.pp1.symboltable.concepts.Struct Expr, TermFirst, Term;
 nonterminal rs.etf.pp1.symboltable.concepts.Obj Factor;
 
-nonterminal Condition, CondTerm, CondFact;
+nonterminal Condition, CondTerm, CondFact, Or;
 
-nonterminal rs.ac.bg.etf.pp1.OpCode AddOp, MulOp;
-nonterminal AssignOp, RelOp;
+nonterminal rs.ac.bg.etf.pp1.OpCode AddOp, MulOp, RelOp;
+nonterminal AssignOp;
 
 
 
@@ -237,9 +239,11 @@ StatementList			::= (StatementYes) Statement StatementList
 							
 Statement				::= (StatementDesignator) DesignatorStatement SEMI
 							|
-							(StatementIf) IF IfCondition Statement ElseOptional
+							(StatementIfElse) IF CondStart LPAREN Condition RPAREN Statement ElseHeader Statement
 							|
-							(StatementWhile) WhileHeader WhileCondition Statement
+							(StatementIf) IF CondStart LPAREN Condition RPAREN Statement
+							|
+							(StatementWhile) WhileHeader CondStart LPAREN Condition RPAREN Statement
 							|
 							(StatementBreak) BREAK SEMI
 							|
@@ -253,28 +257,23 @@ Statement				::= (StatementDesignator) DesignatorStatement SEMI
 							|
 							(StatementPrint) PRINT LPAREN Expr WidthOptional RPAREN SEMI
 							|
-							(StatementForeach) Designator DOT FOREACH LPAREN IDENT:element LAMBDA Statement RPAREN SEMI
+							(StatementForeach) ForeachHeader LAMBDA Statement RPAREN SEMI
 							|
 							(StatementBlock) LCURLY StatementList RCURLY
 							;
-			
-IfCondition				::= (IfCondition) LPAREN Condition RPAREN;							
 							
-ElseOptional			::= (ElseYes) ElseHeader Statement
-							|
-							(ElseNo) /* epsilon */
-							;
+CondStart				::= (CondStart) /* epsilon */;							
 							
-ElseHeader				::= (ElseHeader) ELSE;						
+ElseHeader				::= (ElseHeader) ELSE;								
 							
-WhileHeader				::= (WhileHeader) WHILE;
-
-WhileCondition			::= (WhileCondition) LPAREN Condition RPAREN;							
+WhileHeader				::= (WhileHeader) WHILE;												
 							
 WidthOptional			::= (WidthYes) COMMA NUMCONST:width
 							|
 							(WidthNo) /* epsilon */
-							;							 												
+							;
+							
+ForeachHeader			::= (ForeachHeader) Designator DOT FOREACH LPAREN IDENT:element;													 												
 
 //------------------------------------------------------------------------											
 
@@ -363,7 +362,7 @@ Factor					::= (FactorDesignator) Designator
 
 //------------------------------------------------------------------------
 
-Condition				::= (CondTermMultiple) CondTerm OR Condition
+Condition				::= (CondTermMultiple) CondTerm Or Condition
 							|
 							(CondTermSingle) CondTerm
 							;
@@ -376,7 +375,9 @@ CondTerm				::= (CondFactMultiple) CondFact AND CondTerm
 CondFact				::= (CondExpr) Expr
 							|
 							(CondRelOp) Expr RelOp Expr
-							;													
+							;	
+							
+Or						::= (Or) OR;																			
 							
 //------------------------------------------------------------------------
 

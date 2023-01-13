@@ -1,6 +1,8 @@
 package rs.ac.bg.etf.pp1;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
 import rs.ac.bg.etf.pp1.ast.*;
 import rs.etf.pp1.mj.runtime.Code;
@@ -101,6 +103,172 @@ public class CodeGenerator extends VisitorAdaptor {
 		
 		Code.loadConst(width);
 		Code.put(printIns);
+	}
+	
+	//------------------------------------------------------------------------
+	
+	private Stack<Integer> loopJmpStart = new Stack<>();
+	private Stack<Integer> jmpEndFixup = new Stack<>(); 
+	
+	private Stack<Stack<Integer>> falseCondFactFixup = new Stack<>();
+	private Stack<Stack<Integer>> trueCondTermFixup = new Stack<>();
+	
+	private Stack<Stack<Integer>> breakFixupEnd = new Stack<>();
+	
+	//------------------------------------------------------------------------
+	
+	@Override
+	public void visit(CondStart condStart) {
+		this.falseCondFactFixup.push(new Stack<>());
+		this.trueCondTermFixup.push(new Stack<>());
+	}
+	
+	@Override
+	public void visit(CondExpr condExpr) {
+		Code.putFalseJump(Code.eq, 0);
+		this.falseCondFactFixup.peek().push(Code.pc - 2);
+	}
+	
+	@Override
+	public void visit(CondRelOp condRelOp) {
+		Code.putFalseJump(condRelOp.getRelOp().opcode.getOpCode(), 0);
+		this.falseCondFactFixup.peek().push(Code.pc - 2);
+	}
+	
+	@Override
+	public void visit(CondFactSingle condFactSingle) {
+		Code.putJump(0);
+		this.trueCondTermFixup.peek().push(Code.pc - 2);
+	}
+	
+	@Override
+	public void visit(CondTermSingle condTermSingle) {
+		Stack<Integer> currentConditionFixup = this.trueCondTermFixup.pop();
+		
+		for (int conditionFixup : currentConditionFixup) {
+			Code.fixup(conditionFixup);
+		}
+	}
+	
+	@Override
+	public void visit(Or or) {
+		Stack<Integer> currentCondTermFixup = this.falseCondFactFixup.pop();
+		
+		for (int termFixup : currentCondTermFixup) {
+			Code.fixup(termFixup);
+		}
+		
+		this.falseCondFactFixup.push(new Stack<>());
+	}
+	
+	//------------------------------------------------------------------------
+	
+	@Override
+	public void visit(ElseHeader elseHeader) {
+		Stack<Integer> currentCondTermFixup = this.falseCondFactFixup.pop();
+		
+		for (int termFixup : currentCondTermFixup) {
+			Code.fixup(termFixup);
+		}
+	}
+	
+	@Override
+	public void visit(StatementIf statementIf) {
+		Stack<Integer> currentCondTermFixup = this.falseCondFactFixup.pop();
+		
+		for (int termFixup : currentCondTermFixup) {
+			Code.fixup(termFixup);
+		}
+	}
+	
+	//------------------------------------------------------------------------
+	
+	@Override
+	public void visit(WhileHeader whileHeader) {
+		this.loopJmpStart.push(Code.pc);
+	}
+	
+	@Override
+	public void visit(StatementWhile statementWhile) {
+		Code.putJump(this.loopJmpStart.pop());
+		
+		Stack<Integer> currentCondTermFixup = this.falseCondFactFixup.pop();
+		
+		for (int breakFixup : currentCondTermFixup) {
+			Code.fixup(breakFixup);
+		}
+		
+		Stack<Integer> currentLoopBreakFixup = this.breakFixupEnd.pop();
+		
+		for (int breakFixup : currentLoopBreakFixup) {
+			Code.fixup(breakFixup);
+		}
+	}
+	
+	//------------------------------------------------------------------------
+	
+	@Override
+	public void visit(ForeachHeader foreachHeader) {
+		int arrayLoadIns;
+		
+		if (foreachHeader.getDesignator().obj.getType().getElemType() == SymbolTable.charType) {
+			arrayLoadIns = Code.baload;
+		} else {
+			arrayLoadIns = Code.aload;
+		}
+
+		Code.load(foreachHeader.getDesignator().obj);
+		Code.put(Code.const_m1);
+		
+		this.loopJmpStart.push(Code.pc);
+		
+		Code.put(Code.const_1);
+		Code.put(Code.add);
+		Code.put(Code.dup2);
+		Code.put(Code.dup2);
+		Code.put(Code.dup_x1);
+		Code.put(Code.pop);
+		Code.put(Code.arraylength);
+		Code.putFalseJump(Code.ne, 0);
+		
+		this.jmpEndFixup.push(Code.pc - 2);
+		
+		Code.put(arrayLoadIns);
+		Code.store(foreachHeader.obj);
+		
+		this.breakFixupEnd.push(new Stack<>());
+	}
+	
+	@Override
+	public void visit(StatementForeach statementForeach) {
+		Code.putJump(this.loopJmpStart.pop());
+		Code.fixup(this.jmpEndFixup.pop());
+		
+		Code.put(Code.pop);
+		Code.put(Code.pop);
+		
+		Stack<Integer> currentLoopBreakFixup = this.breakFixupEnd.pop();
+		
+		for (int breakFixup : currentLoopBreakFixup) {
+			Code.fixup(breakFixup);
+		}
+		
+		Code.put(Code.pop);
+		Code.put(Code.pop);
+	}
+	
+	//------------------------------------------------------------------------
+	
+	@Override
+	public void visit(StatementContinue statementContinue) {
+		Code.putJump(this.loopJmpStart.peek());
+	}
+	
+	@Override
+	public void visit(StatementBreak statementBreak) {
+		Code.putJump(0);
+		
+		this.breakFixupEnd.peek().push(Code.pc - 2);
 	}
 	
 	//------------------------------------------------------------------------
@@ -242,6 +410,5 @@ public class CodeGenerator extends VisitorAdaptor {
 		Code.put(Code.arraylength);
 		
 		Code.put(Code.return_);
-	}
-	
+	}	
 }
