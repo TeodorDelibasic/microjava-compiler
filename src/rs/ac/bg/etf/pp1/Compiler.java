@@ -50,11 +50,11 @@ public class Compiler {
 			
 			if (destination.exists()) destination.delete();
 			
+			Code.dataSize = semanticAnalyzer.getDataSize();
+			
 			CodeGenerator codeGenerator = new CodeGenerator();
 			
 			program.traverseBottomUp(codeGenerator);
-			
-			Code.dataSize = semanticAnalyzer.getDataSize();
 			Code.write(new FileOutputStream(destination));
 			
 			System.out.println("Uspesno");

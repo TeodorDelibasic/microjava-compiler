@@ -28,4 +28,8 @@ public class ObjList {
 	public boolean assignableTo(Obj dest, int ind) {
 		return this.objList.get(ind) == SymbolTable.noObj || this.objList.get(ind).getType().assignableTo(dest.getType());
 	}
+	
+	public boolean equalTo(Obj param, int ind) {
+		return this.objList.get(ind).getType().equals(param.getType());
+	}
 }

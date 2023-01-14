@@ -12,9 +12,40 @@ public class CodeGenerator extends VisitorAdaptor {
 	
 	@Override
 	public void visit(ProgramHeader programHeader) {
+		this.generateDefaultConstr();
 		this.generateOrd();
 		this.generateChr();
 		this.generateLen();
+	}
+	
+	//------------------------------------------------------------------------
+	
+	@Override
+	public void visit(ClassHeader classHeader) {
+		classHeader.virtualmethods.resolveAdr();
+	}
+	
+	private void storeConst() {
+		Code.put(Code.putstatic);
+		Code.put4(Code.dataSize++);
+	}
+	
+	@Override
+	public void visit(ClassDecl classDecl) {
+		classDecl.struct.getMembersTable().searchKey("-TVF").setAdr(Code.pc);
+		
+		for (Obj method : classDecl.struct.getMembers()) {
+			if (method.getKind() == Obj.Meth) {
+				for (int i = 0; i < method.getName().length(); ++i) {
+					Code.loadConst(method.getName().charAt(i));
+					this.storeConst();
+				}
+				Code.loadConst(-1);
+				this.storeConst();
+			}
+		}
+		Code.loadConst(-2);
+		this.storeConst();
 	}
 	
 	//------------------------------------------------------------------------
@@ -396,6 +427,15 @@ public class CodeGenerator extends VisitorAdaptor {
 	}
 	
 	//------------------------------------------------------------------------
+	
+	private void generateDefaultConstr() {
+		Code.put(Code.enter);
+		Code.put(1);
+		Code.put(1);
+		
+		Code.put(Code.exit);
+		Code.put(Code.return_);
+	}
 	
 	private void generateOrd() {
 		SymbolTable.find("ord").setAdr(Code.pc);

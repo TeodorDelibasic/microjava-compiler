@@ -78,7 +78,9 @@ nonterminal ConstDeclStmt, ConstDeclList, ConstDecl;
 
 nonterminal VarDeclStmtList, VarDeclStmt, VarDeclList, VarDecl, VarArray;
 
-nonterminal ClassDecl, ClassParent, ClassMethods, ConstructorDeclList, ConstructorDecl;
+nonterminal rs.etf.pp1.symboltable.concepts.Struct ClassDecl;
+nonterminal rs.ac.bg.etf.pp1.VirtualMethods ClassHeader;
+nonterminal ClassParent, ClassMethods, ConstructorDeclList, ConstructorDecl;
 
 nonterminal rs.etf.pp1.symboltable.concepts.Obj MethodHeader, MethodSignature, MethodDecl;
 nonterminal MethodDeclList, MethodType;
@@ -174,7 +176,9 @@ VarArray 				::= (VarArrayYes) LSQUARE RSQUARE
 
 //------------------------------------------------------------------------
 
-ClassDecl				::= (ClassDecl) CLASS IDENT:className ClassParent LCURLY VarDeclStmtList ClassMethods RCURLY;
+ClassDecl				::= (ClassDecl) ClassHeader ClassParent LCURLY VarDeclStmtList ClassMethods RCURLY;
+
+ClassHeader				::= (ClassHeader) CLASS IDENT:className;
 
 ClassParent				::= (ClassParentYes) EXTENDS Type
 							|
@@ -184,7 +188,7 @@ ClassParent				::= (ClassParentYes) EXTENDS Type
 ClassMethods			::= (ClassMethodsYes) LCURLY ConstructorDeclList MethodDeclList RCURLY
 							|
 							(ClassMethodsNo) /* epsilon */
-							;
+							;							
 							
 ConstructorDeclList		::= (ConstructorDeclYes) ConstructorDeclList ConstructorDecl
 							|

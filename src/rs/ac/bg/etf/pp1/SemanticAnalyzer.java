@@ -6,16 +6,11 @@ import rs.etf.pp1.symboltable.concepts.*;
 
 public class SemanticAnalyzer extends VisitorAdaptor {
 	
-	private int nVars = 0;
+	private int dataSize = 0;
 	
 	public int getDataSize() {
-		return this.nVars;
+		return this.dataSize;
 	}
-	
-	//------------------------------------------------------------------------
-	
-	private Struct currentType = SymbolTable.noType;
-	private Struct methodType = null;
 	
 	//------------------------------------------------------------------------
 	
@@ -42,6 +37,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	}
 	
 	//------------------------------------------------------------------------	
+	
+	private Struct currentType = SymbolTable.noType;
 	
 	@Override
 	public void visit(Type type) {
@@ -101,6 +98,92 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	//------------------------------------------------------------------------
 	
+	private Struct currentClass = null;
+	
+	@Override
+	public void visit(ClassHeader classHeader) {
+		String className = classHeader.getClassName();
+		
+		if (this.symbolExists(className, classHeader)) {
+			this.currentClass = SymbolTable.noType;
+			return;
+		}
+		
+		this.currentClass = new Struct(Struct.Class);
+		
+		SymbolTable.insert(Obj.Type, className, this.currentClass);
+		SymbolTable.openScope();
+		
+		SymbolTable.insert(Obj.Fld, "-TVF", SymbolTable.intType);
+	}
+	
+	private VirtualMethods virtualMethods = new VirtualMethods();
+	
+	@Override
+	public void visit(ClassParentYes classParent) {
+		Struct parentType = classParent.getType().struct;
+		
+		for (Obj member : parentType.getMembers()) {
+			if (member.getKind() == Obj.Fld) {
+				if (!member.getName().equals("-TVF")) {
+					SymbolTable.insert(Obj.Fld, 
+							member.getName(),
+							member.getType()).setAdr(member.getAdr());
+				}
+			} else {
+				Obj childMethod = SymbolTable.insert(Obj.Meth, 
+						member.getName(),
+						member.getType());
+				SymbolTable.openScope();
+				
+				SymbolTable.insert(Obj.Var, "this", this.currentClass);
+				
+				for (Obj param : member.getLocalSymbols()) {
+					if (!param.getName().equals("this")) {
+						SymbolTable.insert(Obj.Var, 
+								param.getName(),
+								param.getType()).setAdr(param.getAdr());
+					}
+				}
+				
+				SymbolTable.chainLocalSymbols(childMethod);
+				SymbolTable.closeScope();
+				
+				this.virtualMethods.addParentMethod(member.getName(), member);
+				this.virtualMethods.addChilMethod(member.getName(), childMethod);
+			}
+		}
+		
+		this.currentClass.setElementType(parentType);
+	}
+	
+	private int constructorCnt = 0;
+	
+	@Override
+	public void visit(ConstructorDecl donstructorDecl) {
+		this.constructorCnt++;
+	}
+	
+	@Override
+	public void visit(ConstructorDeclNo constructorDeclNo) {
+		if (this.constructorCnt == 0) {
+			// Add default
+		} else {
+			this.constructorCnt = 0;
+		}
+	}
+	
+	@Override
+	public void visit(ClassDecl classDecl) {
+		classDecl.struct = this.currentClass;
+		this.currentClass = null;
+		
+		SymbolTable.chainLocalSymbols(classDecl.struct);
+		SymbolTable.closeScope();
+	}
+	
+	//------------------------------------------------------------------------
+	
 	@Override
 	public void visit(VarDecl varDecl) {
 		String varDeclName = varDecl.getVarName();
@@ -117,12 +200,17 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			varType = this.currentType;
 		}
 		
-		this.nVars++;
-		
-		SymbolTable.insert(Obj.Var, varDeclName, varType);
+		if (this.currentClass != null) {
+			SymbolTable.insert(Obj.Fld, varDeclName, varType);
+		} else {
+			this.dataSize++;
+			SymbolTable.insert(Obj.Var, varDeclName, varType);
+		}
 	}
 	
 	//------------------------------------------------------------------------
+	
+	private Struct methodType = null;
 	
 	@Override
 	public void visit(MethodHeader methodHeader) {
@@ -143,11 +231,31 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		methodHeader.obj = SymbolTable.insert(Obj.Meth, methodName, this.methodType);
 		
 		SymbolTable.openScope();
+		
+		if (this.currentClass != null) {
+			SymbolTable.insert(Obj.Var, "this", this.currentClass);
+		}
 	}
 	
 	@Override
 	public void visit(MethodSignature methodSignature) {
-		methodSignature.obj = methodSignature.getMethodHeader().obj;
+		MethodHeader methodHeader = methodSignature.getMethodHeader();
+		String methodName = methodHeader.getMethodName();
+		ObjList params = methodSignature.getFormPars().objlist;
+		
+		methodSignature.obj = methodHeader.obj;
+		
+		if (this.currentClass != null) {
+			if (this.virtualMethods.isOverride(methodName)) {
+				if (!this.virtualMethods.isValidOverride(methodName, params)) {
+					report_error("Error overriding method" + methodName, methodSignature);
+				} else {
+					this.virtualMethods.removeMethod(methodName);
+				}
+			} else {
+				
+			}
+		}
 	}
 	
 	@Override
@@ -189,7 +297,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	@Override
 	public void visit(FormParSingle formParSingle) {
-		formParSingle.getFormPar().obj.setFpPos(0);
+		formParSingle.getFormPar().obj.setFpPos(this.currentClass != null ? 1 : 0);
 		
 		formParSingle.objlist = new ObjList();
 		formParSingle.objlist.add(formParSingle.getFormPar().obj);

@@ -10,6 +10,7 @@
 				<exclude name="DumpVisitor.java"/>
 				<exclude name="CodeGenerator.java"/>
 				<exclude name="ObjList.java"/>
+				<exclude name="VirtualMethods.java"/>
 				<exclude name="OpCode.java"/>
 			</fileset>
 		</delete>
