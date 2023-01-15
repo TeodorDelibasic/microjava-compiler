@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import rs.etf.pp1.symboltable.concepts.Obj;
+import rs.etf.pp1.symboltable.concepts.Struct;
 
 public class VirtualMethods {
 	
@@ -18,27 +19,43 @@ public class VirtualMethods {
 		this.childMethods.put(name, method);
 	}
 	
-	public void removeMethod(String name) {
+	public void overrideMethod(String name) {
 		this.parentMethods.remove(name);
-		this.childMethods.remove(name);
 	}
 	
 	public boolean isOverride(String name) {
 		return this.parentMethods.containsKey(name);
 	}
+	
+	public boolean hasMethod(String methodName) {
+		return this.childMethods.containsKey(methodName);
+	}
 
-	public boolean isValidOverride(String name, ObjList params) {
+	public boolean validParams(String name, ObjList params) {
 		if (!this.parentMethods.containsKey(name)) {
 			return true;
 		}
 		
+		if (params.size() != this.parentMethods.get(name).getLevel()) {
+			return false;
+		}
+		
 		for (Obj arg : this.parentMethods.get(name).getLocalSymbols()) {
-			if (!arg.getName().equals("this") && !params.equalTo(arg, arg.getFpPos())) {
+			if (arg.getFpPos() == -1) {
+				continue;
+			}
+			
+			if (!arg.getName().equals("this") && !params.equalTo(arg.getType(), arg.getFpPos())) {
 				return false;
 			}
 		}
 		
 		return true;
+	}
+
+	public boolean validReturnType(String methodName, Struct currentMethod) {
+		return  currentMethod.equals(this.parentMethods.get(methodName).getType())
+				|| currentMethod.assignableTo(this.parentMethods.get(methodName).getType());
 	}
 
 	public void resolveAdr() {

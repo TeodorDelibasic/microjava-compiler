@@ -80,14 +80,13 @@ nonterminal VarDeclStmtList, VarDeclStmt, VarDeclList, VarDecl, VarArray;
 
 nonterminal rs.etf.pp1.symboltable.concepts.Struct ClassDecl;
 nonterminal rs.ac.bg.etf.pp1.VirtualMethods ClassHeader;
-nonterminal ClassParent, ClassMethods, ConstructorDeclList, ConstructorDecl;
+nonterminal ClassParent, ClassMethods, ConstructorDeclList;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj ConstructorDecl, ConstructorSignature;
 
-nonterminal rs.etf.pp1.symboltable.concepts.Obj MethodHeader, MethodSignature, MethodDecl;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj MethodSignature, MethodDecl;
 nonterminal MethodDeclList, MethodType;
 
-nonterminal rs.ac.bg.etf.pp1.ObjList FormPars, FormParList;
-nonterminal rs.etf.pp1.symboltable.concepts.Obj FormPar;
-nonterminal FormParArray;
+nonterminal FormPars, FormParList, FormPar, FormParArray;
 
 nonterminal StatementList, Statement;
 nonterminal CondStart, ElseHeader, WhileHeader;
@@ -99,10 +98,11 @@ nonterminal DesignatorStatement, PostfixOp;
 nonterminal rs.ac.bg.etf.pp1.ObjList DesignatorList;
 
 nonterminal MethodCall;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj MethodDesignator;
 nonterminal rs.ac.bg.etf.pp1.ObjList ActPars, ExprList;
 
 nonterminal rs.etf.pp1.symboltable.concepts.Struct Expr, TermFirst, Term;
-nonterminal rs.etf.pp1.symboltable.concepts.Obj Factor;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj Factor, NewClass;
 
 nonterminal Condition, CondTerm, CondFact, Or;
 
@@ -195,7 +195,9 @@ ConstructorDeclList		::= (ConstructorDeclYes) ConstructorDeclList ConstructorDec
 							(ConstructorDeclNo) /* epsilon */
 							;
 
-ConstructorDecl			::= (ConstructorDecl) IDENT:className LPAREN FormPars RPAREN VarDeclStmtList LCURLY StatementList RCURLY;							
+ConstructorDecl			::= (ConstructorDecl) ConstructorSignature VarDeclStmtList LCURLY StatementList RCURLY;							
+	
+ConstructorSignature	::= (ConstructorSignature) 	IDENT:className LPAREN FormPars RPAREN;
 							
 //------------------------------------------------------------------------
 					
@@ -204,11 +206,9 @@ MethodDeclList			::= (MethodDeclYes) MethodDecl MethodDeclList
 							(MethodDeclNo) /* epsilon */
 							;
 					
-MethodDecl				::= (MethodDecl) MethodSignature LCURLY StatementList RCURLY;
+MethodDecl				::= (MethodDecl) MethodSignature VarDeclStmtList LCURLY StatementList RCURLY;
 
-MethodSignature			::= (MethodSignature) MethodHeader LPAREN FormPars RPAREN VarDeclStmtList;
-
-MethodHeader			::= (MethodHeader) MethodType IDENT:methodName;
+MethodSignature			::= (MethodSignature) MethodType IDENT:methodName LPAREN FormPars RPAREN;
 
 MethodType				::= (VoidYes) VOID
 							|
@@ -315,14 +315,16 @@ DesignatorList			::= (DesignatorPresent) DesignatorList COMMA Designator
 							
 //------------------------------------------------------------------------	
 
-MethodCall				::= (MethodCall) Designator LPAREN ActPars RPAREN;					
+MethodCall				::= (MethodCall) MethodDesignator LPAREN ActPars RPAREN;
+
+MethodDesignator		::= (MethodDesignator) Designator;					
 							
 ActPars					::= (ActParsYes) ExprList
 							|
 							(ActParsNo) /* epsilon */
 							;													
 
-ExprList				::= (ExprMultiple) Expr COMMA ExprList
+ExprList				::= (ExprMultiple) ExprList COMMA Expr
 							|
 							(ExprSingle) Expr
 							;
@@ -357,12 +359,14 @@ Factor					::= (FactorDesignator) Designator
 							|
 							(FactorBool) BOOLCONST:constVal
 							|
-							(FactorNewClass) NEW Type LPAREN ActPars RPAREN
+							(FactorNewClass) NewClass LPAREN ActPars RPAREN
 							|
 							(FactorNewArray) NEW Type LSQUARE Expr RSQUARE
 							|
 							(FactorParen) LPAREN Expr RPAREN
-							;		
+							;	
+							
+NewClass				::= (NewClass) NEW Type;							
 
 //------------------------------------------------------------------------
 

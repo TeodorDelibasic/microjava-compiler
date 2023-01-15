@@ -13,4 +13,17 @@ public class SymbolTable extends Tab {
 		Tab.currentScope.addToLocals(new Obj(Obj.Type, "bool", boolType));
 	}
 	
+	public static boolean assignable(Struct src, Struct dst) {
+		if (src.getKind() == Struct.Class && dst.getKind() == Struct.Class) {
+			for (Struct parentClass = src; parentClass != null; parentClass = src.getElemType()) {
+				if (parentClass == dst)
+					return true;
+			}
+			
+			return false;
+		}
+		
+		return src.assignableTo(dst);
+	}
+	
 }

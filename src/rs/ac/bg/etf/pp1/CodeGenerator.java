@@ -1,6 +1,8 @@
 package rs.ac.bg.etf.pp1;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Stack;
 
 import rs.ac.bg.etf.pp1.ast.*;
@@ -12,7 +14,7 @@ public class CodeGenerator extends VisitorAdaptor {
 	
 	@Override
 	public void visit(ProgramHeader programHeader) {
-		this.generateDefaultConstr();
+		this.generateDefaultConstructor();
 		this.generateOrd();
 		this.generateChr();
 		this.generateLen();
@@ -20,44 +22,91 @@ public class CodeGenerator extends VisitorAdaptor {
 	
 	//------------------------------------------------------------------------
 	
+	private Map<String, Struct> classes = new HashMap<>();
+	private Map<String, Integer> tvfAdr = new HashMap<>();
+	
 	@Override
 	public void visit(ClassHeader classHeader) {
 		classHeader.virtualmethods.resolveAdr();
 	}
 	
-	private void storeConst() {
-		Code.put(Code.putstatic);
-		Code.put4(Code.dataSize++);
-	}
-	
 	@Override
 	public void visit(ClassDecl classDecl) {
-		classDecl.struct.getMembersTable().searchKey("-TVF").setAdr(Code.pc);
+		this.classes.put(classDecl.getClassHeader().getClassName(), classDecl.struct);
+		this.tvfAdr.put(classDecl.getClassHeader().getClassName(), Code.dataSize);
 		
 		for (Obj method : classDecl.struct.getMembers()) {
-			if (method.getKind() == Obj.Meth) {
+			if (method.getKind() != Obj.Meth || method.getName().charAt(0) == '-')
+				continue;
+			Code.dataSize += method.getName().length() + 2;
+		}
+		Code.dataSize += 1;
+	}
+	
+	private void generateTvf() {
+		for (String className : this.classes.keySet()) {
+			
+			int adr = this.tvfAdr.get(className);
+			
+			for (Obj method : this.classes.get(className).getMembers()) {
+				if (method.getKind() != Obj.Meth || method.getName().charAt(0) == '-')
+					continue;
+				
 				for (int i = 0; i < method.getName().length(); ++i) {
 					Code.loadConst(method.getName().charAt(i));
-					this.storeConst();
+					Code.put(Code.putstatic);
+					Code.put2(adr++);
 				}
+				
 				Code.loadConst(-1);
-				this.storeConst();
+				Code.put(Code.putstatic);
+				Code.put2(adr++);
+				
+				Code.loadConst(method.getAdr());
+				Code.put(Code.putstatic);
+				Code.put2(adr++);
 			}
+			
+			Code.loadConst(-2);
+			Code.put(Code.putstatic);
+			Code.put2(adr++);
 		}
-		Code.loadConst(-2);
-		this.storeConst();
 	}
 	
 	//------------------------------------------------------------------------
 	
 	@Override
-	public void visit(MethodHeader methodHeader) {
-		Obj methodObj = methodHeader.obj;
-		
-		if (methodHeader.getMethodName().equals("main")) {
+	public void visit(ConstructorSignature constructorSignature) {
+		this.generateMethodEntry(constructorSignature.obj);
+	}
+	
+	@Override
+	public void visit(ConstructorDecl constructorDecl) {
+		this.generateMethodExit(constructorDecl.obj);
+	}
+	
+	//------------------------------------------------------------------------
+	
+	@Override
+	public void visit(MethodSignature methodSignature) {
+		if (methodSignature.getMethodName().equals("main")) {
 			Code.mainPc = Code.pc;
 		}
 		
+		this.generateMethodEntry(methodSignature.obj);
+		
+		if (methodSignature.getMethodName().equals("main"))
+			this.generateTvf();
+	}
+	
+	@Override
+	public void visit(MethodDecl methodDecl) {
+		this.generateMethodExit(methodDecl.obj);
+	}
+	
+	//------------------------------------------------------------------------
+	
+	private void generateMethodEntry(Obj methodObj) {
 		methodObj.setAdr(Code.pc);
 		
 		Code.put(Code.enter);
@@ -65,9 +114,8 @@ public class CodeGenerator extends VisitorAdaptor {
 		Code.put(methodObj.getLocalSymbols().size());
 	}
 	
-	@Override
-	public void visit(MethodDecl methodDecl) {
-		if (methodDecl.obj.getType().equals(SymbolTable.noType)) {
+	private void generateMethodExit(Obj methodObj) {
+		if (methodObj.getType().equals(SymbolTable.noType)) {
 			Code.put(Code.exit);
 			Code.put(Code.return_);
 		} else {
@@ -78,12 +126,59 @@ public class CodeGenerator extends VisitorAdaptor {
 	
 	//------------------------------------------------------------------------
 	
+	private Stack<Obj> methodCallStack = new Stack<>();
+	
+	@Override
+	public void visit(MethodDesignator methodDesignator) {
+		this.methodCallStack.push(methodDesignator.obj);
+		
+		if (methodDesignator.obj.getFpPos() == -1)
+			Code.put(Code.dup);
+	}
+	
+	@Override
+	public void visit(ExprSingle exprSingle) {
+		this.pushDownArg();
+	}
+	
+	@Override
+	public void visit(ExprMultiple exprMultiple) {
+		this.pushDownArg();
+	}
+	
+	private void pushDownArg() {
+		if (!this.methodCallStack.empty() && this.methodCallStack.peek().getFpPos() == -1) {
+			Code.put(Code.dup_x1);
+			Code.put(Code.pop);
+		}
+	}
+	
 	@Override
 	public void visit(MethodCall methodCall) {
-		int dest = methodCall.getDesignator().obj.getAdr() - Code.pc;		
+		Obj methodObj = methodCall.getMethodDesignator().obj;
 		
-		Code.put(Code.call);
-		Code.put2(dest);
+		if (methodObj.getFpPos() != -1) {
+			int dest = methodObj.getAdr() - Code.pc;
+			
+			Code.put(Code.call);
+			Code.put2(dest);
+			
+			return;
+		}	
+		
+		Code.put(Code.getfield);
+		Code.put2(0);
+		
+		Code.put(Code.invokevirtual);
+		for (int i = 0; i < methodObj.getName().length(); ++i) {
+			Code.put4(methodObj.getName().charAt(i));
+		}
+		Code.put(-1 >>> 24);
+		Code.put(-1 >>> 16);
+		Code.put(-1 >>> 8);
+		Code.put(-1 >>> 0);
+		
+		this.methodCallStack.pop();
 	}
 	
 	//------------------------------------------------------------------------
@@ -106,11 +201,10 @@ public class CodeGenerator extends VisitorAdaptor {
 	public void visit(StatementRead statementRead) {
 		Obj designatorObj = statementRead.getDesignator().obj;
 		
-		if (designatorObj.getType().getKind() == Struct.Char) {
+		if (designatorObj.getType().getKind() == Struct.Char)
 			Code.put(Code.bread);
-		} else {
+		else
 			Code.put(Code.read);
-		}
 		
 		Code.store(designatorObj);
 	}
@@ -129,9 +223,8 @@ public class CodeGenerator extends VisitorAdaptor {
 			printIns = Code.print;
 		}
 		
-		if (statementPrint.getWidthOptional() instanceof WidthYes) {
+		if (statementPrint.getWidthOptional() instanceof WidthYes)
 			width = ((WidthYes) statementPrint.getWidthOptional()).getWidth();
-		}
 		
 		Code.loadConst(width);
 		Code.put(printIns);
@@ -255,11 +348,10 @@ public class CodeGenerator extends VisitorAdaptor {
 	public void visit(ForeachHeader foreachHeader) {
 		int arrayLoadIns;
 		
-		if (foreachHeader.getDesignator().obj.getType().getElemType() == SymbolTable.charType) {
+		if (foreachHeader.getDesignator().obj.getType().getElemType() == SymbolTable.charType)
 			arrayLoadIns = Code.baload;
-		} else {
+		else
 			arrayLoadIns = Code.aload;
-		}
 		
 		this.breakJmpAdr.push(new Stack<>());
 
@@ -320,29 +412,26 @@ public class CodeGenerator extends VisitorAdaptor {
 	
 	@Override
 	public void visit(DesignatorMethod designatorMethod) {
-		if (designatorMethod.getMethodCall().getDesignator().obj.getType() != SymbolTable.noType) {
+		if (designatorMethod.getMethodCall().getMethodDesignator().obj.getType() != SymbolTable.noType)
 			Code.put(Code.pop);
-		}
 	}
 
 	@Override
 	public void visit(DesignatorPostfixOp designatorPostfixOp) {
 		Obj designatorObj = designatorPostfixOp.getDesignator().obj;
 		
-		if (designatorObj.getKind() == Obj.Fld) {
+		if (designatorObj.getKind() == Obj.Fld)
 			Code.put(Code.dup);
-		} else if (designatorPostfixOp.getDesignator().obj.getKind() == Obj.Elem) {
+		else if (designatorPostfixOp.getDesignator().obj.getKind() == Obj.Elem)
 			Code.put(Code.dup2);
-		}
 
 		Code.load(designatorObj);
 		Code.put(Code.const_1);
 		
-		if (designatorPostfixOp.getPostfixOp() instanceof PostfixInc) {
+		if (designatorPostfixOp.getPostfixOp() instanceof PostfixInc)
 			Code.put(Code.add);
-		} else {
+		else
 			Code.put(Code.sub);
-		}
 		
 		Code.store(designatorObj);
 	}
@@ -365,6 +454,13 @@ public class CodeGenerator extends VisitorAdaptor {
 	}
 	
 	//------------------------------------------------------------------------
+	
+	@Override
+	public void visit(DesignatorIdent designatorIdent) {
+		if (designatorIdent.obj.getKind() == Obj.Fld ||
+				designatorIdent.obj.getKind() == Obj.Meth && designatorIdent.obj.getFpPos() == -1)
+			Code.put(Code.load_n);
+	}
 	
 	@Override
 	public void visit(DesignatorClass designatorClass) {
@@ -409,6 +505,28 @@ public class CodeGenerator extends VisitorAdaptor {
 		}
 	}
 	
+	@Override
+	public void visit(NewClass newClass) {
+		Code.put(Code.new_);
+		Code.put2(newClass.getType().struct.getNumberOfFields() * 4);
+		
+		Code.put(Code.dup);
+		
+		Code.loadConst(this.tvfAdr.get(newClass.getType().getTypeName()));
+		Code.put(Code.putfield);
+		Code.put2(0);
+		
+		Code.put(Code.dup);
+	}
+	
+	@Override
+	public void visit(FactorNewClass factorNewClass) {
+		int dest = factorNewClass.getNewClass().obj.getAdr() - Code.pc;
+		
+		Code.put(Code.call);
+		Code.put2(dest);
+	}
+	
 	//------------------------------------------------------------------------
 	
 	@Override
@@ -428,7 +546,7 @@ public class CodeGenerator extends VisitorAdaptor {
 	
 	//------------------------------------------------------------------------
 	
-	private void generateDefaultConstr() {
+	private void generateDefaultConstructor() {
 		Code.put(Code.enter);
 		Code.put(1);
 		Code.put(1);

@@ -1,5 +1,8 @@
 package rs.ac.bg.etf.pp1;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import rs.ac.bg.etf.pp1.ast.*;
 import rs.etf.pp1.mj.runtime.Code;
 import rs.etf.pp1.symboltable.concepts.*;
@@ -24,13 +27,12 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(Program program) {
 		Obj mainMethod = SymbolTable.currentScope.findSymbol("main");
 		
-		if (mainMethod == null) {
+		if (mainMethod == null)
 			report_error("Main method must exist", null);
-		} else if (!mainMethod.getType().equals(SymbolTable.noType)) {
+		else if (!mainMethod.getType().equals(SymbolTable.noType))
 			report_error("Main method must be void", null);
-		} else if (mainMethod.getLevel() != 0) {
+		else if (mainMethod.getLevel() != 0)
 			report_error("Main method can't have parameters", null);
-		}
 		
 		SymbolTable.chainLocalSymbols(program.getProgramHeader().obj);
 		SymbolTable.closeScope();
@@ -38,21 +40,20 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	//------------------------------------------------------------------------	
 	
-	private Struct currentType = SymbolTable.noType;
+	private Struct currentType = SymbolTable.nullType;
 	
 	@Override
 	public void visit(Type type) {
-		type.struct = SymbolTable.noType;
+		type.struct = SymbolTable.nullType;
 		
 		Obj typeObj = SymbolTable.find(type.getTypeName());
 
-		if (typeObj.equals(SymbolTable.noObj)) {
+		if (typeObj.equals(SymbolTable.noObj))
 			this.report_error("Type " + type.getTypeName() + " not found", type);
-		} else if (typeObj.getKind() != Obj.Type) {
+		else if (typeObj.getKind() != Obj.Type)
 			this.report_error(type.getTypeName() + " is not a type", type);
-		} else {
+		else
 			type.struct = typeObj.getType();
-		}
 
 		this.currentType = type.struct;
 	}
@@ -75,9 +76,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	}
 	
 	private void declareConstant(String constName, int constValue, Struct constType, SyntaxNode syntaxNode) {
-		if (this.symbolExists(constName, syntaxNode)) {
+		if (this.currentType == SymbolTable.nullType || this.symbolExists(constName, syntaxNode))
 			return;
-		}
 		
 		if (!this.currentType.equals(constType)) {
 			report_error("Type doesn't match for constant " + constName, syntaxNode);
@@ -98,20 +98,20 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	//------------------------------------------------------------------------
 	
-	private Struct currentClass = null;
+	private String className = null;
+	private Struct classType = null;
 	
 	@Override
 	public void visit(ClassHeader classHeader) {
-		String className = classHeader.getClassName();
+		this.className = classHeader.getClassName();
+		this.classType = SymbolTable.nullType;
 		
-		if (this.symbolExists(className, classHeader)) {
-			this.currentClass = SymbolTable.noType;
+		if (this.symbolExists(this.className, classHeader))
 			return;
-		}
 		
-		this.currentClass = new Struct(Struct.Class);
+		this.classType = new Struct(Struct.Class);
 		
-		SymbolTable.insert(Obj.Type, className, this.currentClass);
+		SymbolTable.insert(Obj.Type, this.className, this.classType);
 		SymbolTable.openScope();
 		
 		SymbolTable.insert(Obj.Fld, "-TVF", SymbolTable.intType);
@@ -123,28 +123,41 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(ClassParentYes classParent) {
 		Struct parentType = classParent.getType().struct;
 		
+		if (parentType == SymbolTable.nullType)
+			return;
+		
 		for (Obj member : parentType.getMembers()) {
 			if (member.getKind() == Obj.Fld) {
-				if (!member.getName().equals("-TVF")) {
-					SymbolTable.insert(Obj.Fld, 
-							member.getName(),
-							member.getType()).setAdr(member.getAdr());
-				}
+				if (member.getName().equals("-TVF"))
+					continue;
+				
+				SymbolTable.insert(Obj.Fld, 
+						member.getName(),
+						member.getType()).setAdr(member.getAdr());
 			} else {
+				if (member.getName().charAt(0) == '-')
+					continue;
+				
 				Obj childMethod = SymbolTable.insert(Obj.Meth, 
 						member.getName(),
 						member.getType());
+				
 				SymbolTable.openScope();
+				SymbolTable.insert(Obj.Var, "this", this.classType);
 				
-				SymbolTable.insert(Obj.Var, "this", this.currentClass);
-				
-				for (Obj param : member.getLocalSymbols()) {
-					if (!param.getName().equals("this")) {
-						SymbolTable.insert(Obj.Var, 
-								param.getName(),
-								param.getType()).setAdr(param.getAdr());
-					}
+				for (Obj parentParam : member.getLocalSymbols()) {
+					if (parentParam.getName().equals("this"))
+						continue;
+					
+					Obj childParam = SymbolTable.insert(Obj.Var, 
+							parentParam.getName(),
+							parentParam.getType());
+					childParam.setAdr(parentParam.getAdr());
+					childParam.setFpPos(parentParam.getFpPos());
 				}
+				
+				childMethod.setLevel(member.getLevel());
+				childMethod.setFpPos(member.getFpPos());
 				
 				SymbolTable.chainLocalSymbols(childMethod);
 				SymbolTable.closeScope();
@@ -154,31 +167,117 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			}
 		}
 		
-		this.currentClass.setElementType(parentType);
+		this.classType.setElementType(parentType);
 	}
+	
+	@Override
+	public void visit(ClassDecl classDecl) {
+		if (this.classType == SymbolTable.nullType) {
+			return;
+		} else {
+			classDecl.struct = this.classType;
+			classDecl.getClassHeader().virtualmethods = this.virtualMethods;
+			
+			SymbolTable.chainLocalSymbols(classDecl.struct);
+			SymbolTable.closeScope();
+		}
+		
+		this.virtualMethods = new VirtualMethods();
+		this.classType = null;
+		this.className = null;
+	}
+	
+	//------------------------------------------------------------------------
 	
 	private int constructorCnt = 0;
 	
 	@Override
-	public void visit(ConstructorDecl donstructorDecl) {
+	public void visit(ConstructorSignature constructorSignature) {
+		constructorSignature.obj = SymbolTable.noObj;
+	
+		if (this.classType == SymbolTable.nullType)
+			return;
+		
+		if (!constructorSignature.getClassName().equals(this.className)) {
+			report_error("Constructor must have the same name as class!", constructorSignature);
+			return;
+		}
+		
+		for (Obj constructor : SymbolTable.currentScope.values()) {
+			if (constructor.getKind() != Obj.Meth
+					|| constructor.getName().charAt(0) != '-'
+					|| constructor.getLevel() - 1 != this.formParList.size())
+				continue;
+			
+			boolean check = false;
+			
+			for (Obj param : constructor.getLocalSymbols()) {
+				if (param.getName().equals("this") || param.getFpPos() < 0)
+					continue;
+				
+				if (this.formParList.equalTo(param.getType(), param.getFpPos() - 1)) {
+					check = true;
+					break;
+				}
+			}
+			
+			if (check) {
+				report_error("Constructors can't have the same formal parameters!", constructorSignature);
+				return;
+			}
+		}
+		
+		this.currentMethod = SymbolTable.noType;
+		
+		constructorSignature.obj = SymbolTable.insert(Obj.Meth, "-" + this.constructorCnt, this.currentMethod);
+		
+		SymbolTable.openScope();
+		
+		Obj thisObj = SymbolTable.insert(Obj.Var, "this", this.classType);
+		thisObj.setFpPos(0);
+		thisObj.setLevel(1);
+		
+		for (Obj paramObj : this.formParList.getList()) {
+			SymbolTable.currentScope.addToLocals(paramObj);
+		}
+	}
+	
+	@Override
+	public void visit(ConstructorDecl constructorDecl) {
+		constructorDecl.obj = constructorDecl.getConstructorSignature().obj;
+		constructorDecl.obj.setLevel(this.formParList.size() + 1);
+		
+		this.formParList.clear();
+		
+		if (constructorDecl.obj == SymbolTable.noObj)
+			return;
+		
+		SymbolTable.chainLocalSymbols(constructorDecl.obj);
+		SymbolTable.closeScope();
+		
+		this.currentMethod = null;
+	}
+	
+	@Override
+	public void visit(ConstructorDeclYes donstructorDeclYes) {
 		this.constructorCnt++;
 	}
 	
 	@Override
 	public void visit(ConstructorDeclNo constructorDeclNo) {
-		if (this.constructorCnt == 0) {
-			// Add default
-		} else {
+		if (this.constructorCnt == 0)
+			this.generateDefaultConstructor();
+		else
 			this.constructorCnt = 0;
-		}
 	}
 	
-	@Override
-	public void visit(ClassDecl classDecl) {
-		classDecl.struct = this.currentClass;
-		this.currentClass = null;
+	private void generateDefaultConstructor() {
+		Obj defaultObj = SymbolTable.insert(Obj.Meth, "-" + this.constructorCnt, SymbolTable.noType);
+		defaultObj.setLevel(1);
 		
-		SymbolTable.chainLocalSymbols(classDecl.struct);
+		SymbolTable.openScope();
+		SymbolTable.insert(Obj.Var, "this", this.classType);
+		SymbolTable.chainLocalSymbols(defaultObj);
 		SymbolTable.closeScope();
 	}
 	
@@ -186,150 +285,138 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	@Override
 	public void visit(VarDecl varDecl) {
+		if (this.classType == SymbolTable.nullType || this.currentMethod == SymbolTable.nullType)
+			return;
+		
 		String varDeclName = varDecl.getVarName();
 		
-		if (this.symbolExists(varDeclName, varDecl)) {
+		if (this.symbolExists(varDeclName, varDecl))
 			return;
-		}
 		
 		Struct varType;
 		
-		if (varDecl.getVarArray() instanceof VarArrayYes) {
+		if (varDecl.getVarArray() instanceof VarArrayYes)
 			varType = new Struct(Struct.Array, this.currentType);
-		} else {
+		else
 			varType = this.currentType;
+		
+		int varKind = Obj.Var;
+		
+		if (this.currentMethod == null) {
+			if (this.classType != null)
+				varKind = Obj.Fld;
+			else
+				this.dataSize++;
 		}
 		
-		if (this.currentClass != null) {
-			SymbolTable.insert(Obj.Fld, varDeclName, varType);
-		} else {
-			this.dataSize++;
-			SymbolTable.insert(Obj.Var, varDeclName, varType);
-		}
+		SymbolTable.insert(varKind, varDeclName, varType).setFpPos(-1);
 	}
 	
 	//------------------------------------------------------------------------
 	
-	private Struct methodType = null;
-	
-	@Override
-	public void visit(MethodHeader methodHeader) {
-		methodHeader.obj = SymbolTable.noObj;
-		
-		String methodName = methodHeader.getMethodName();
-		
-		if (this.symbolExists(methodName, methodHeader)) {
-			return;
-		}
-		
-		if (methodHeader.getMethodType() instanceof VoidYes) {
-			this.methodType = SymbolTable.noType;
-		} else {
-			this.methodType = this.currentType;
-		}
-		
-		methodHeader.obj = SymbolTable.insert(Obj.Meth, methodName, this.methodType);
-		
-		SymbolTable.openScope();
-		
-		if (this.currentClass != null) {
-			SymbolTable.insert(Obj.Var, "this", this.currentClass);
-		}
-	}
+	private Struct currentMethod = null;
 	
 	@Override
 	public void visit(MethodSignature methodSignature) {
-		MethodHeader methodHeader = methodSignature.getMethodHeader();
-		String methodName = methodHeader.getMethodName();
-		ObjList params = methodSignature.getFormPars().objlist;
+		methodSignature.obj = SymbolTable.noObj;
 		
-		methodSignature.obj = methodHeader.obj;
+		if (this.classType == SymbolTable.nullType)
+			return;
 		
-		if (this.currentClass != null) {
+		if (methodSignature.getMethodType() instanceof VoidYes)
+			this.currentMethod = SymbolTable.noType;
+		else
+			this.currentMethod = this.currentType;
+		
+		int isClassMethod = 0;
+		
+		String methodName = methodSignature.getMethodName();
+		
+		if (this.classType != null) {
+			Obj thisObj = new Obj(Obj.Var, "this", this.classType, 0, 1);
+			
+			thisObj.setFpPos(0);
+			
+			this.formParList.addAtIndex(thisObj, 0);
+			
 			if (this.virtualMethods.isOverride(methodName)) {
-				if (!this.virtualMethods.isValidOverride(methodName, params)) {
-					report_error("Error overriding method" + methodName, methodSignature);
+				if (this.virtualMethods.validParams(methodName, formParList)
+						&& this.virtualMethods.validReturnType(methodName, this.currentMethod)) {
+					this.virtualMethods.overrideMethod(methodName);
+					SymbolTable.currentScope.getLocals().deleteKey(methodName);
 				} else {
-					this.virtualMethods.removeMethod(methodName);
+					report_error("Invalid override", methodSignature);
+					return;
 				}
-			} else {
-				
 			}
+			
+			isClassMethod = -1;
+		}
+		
+		if (this.symbolExists(methodName, methodSignature)) {
+			this.currentMethod = SymbolTable.nullType;
+			return;
+		}
+		
+		methodSignature.obj = SymbolTable.insert(Obj.Meth, methodName, this.currentMethod);
+		methodSignature.obj.setFpPos(isClassMethod);
+		
+		SymbolTable.openScope();
+		
+		for (Obj paramObj : this.formParList.getList()) {
+			SymbolTable.currentScope.addToLocals(paramObj);
 		}
 	}
 	
 	@Override
 	public void visit(MethodDecl methodDecl) {
 		methodDecl.obj = methodDecl.getMethodSignature().obj;
+		methodDecl.obj.setLevel(this.formParList.size());
 		
-		if (methodDecl.obj == SymbolTable.noObj) {
+		this.formParList.clear();
+		
+		if (methodDecl.obj == SymbolTable.noObj)
 			return;
-		}
-		
-		methodDecl.obj.setLevel(methodDecl.getMethodSignature().getFormPars().objlist.size());
 		
 		SymbolTable.chainLocalSymbols(methodDecl.obj);
 		SymbolTable.closeScope();
 		
-		this.methodType = null;
+		this.currentMethod = null;
 	}
 	
 	//------------------------------------------------------------------------
+	
+	private ObjList formParList = new ObjList();
 	
 	@Override
 	public void visit(FormPar formPar) {
-		String formParName = formPar.getFormParName();
-		
-		if (this.symbolExists(formParName, formPar)) {
-			return;
-		}
-		
 		Struct formParType;
 		
-		if (formPar.getFormParArray() instanceof FormParArrayYes) {
+		if (formPar.getFormParArray() instanceof FormParArrayYes)
 			formParType = new Struct(Struct.Array, this.currentType);
-		} else {
+		else
 			formParType = currentType;
-		}
 		
-		formPar.obj = SymbolTable.insert(Obj.Var, formParName, formParType);
-	}
-	
-	@Override
-	public void visit(FormParSingle formParSingle) {
-		formParSingle.getFormPar().obj.setFpPos(this.currentClass != null ? 1 : 0);
+		Obj paramObj = new Obj(Obj.Var, formPar.getFormParName(), formParType, 0, 1);
 		
-		formParSingle.objlist = new ObjList();
-		formParSingle.objlist.add(formParSingle.getFormPar().obj);
-	}
-	
-	@Override
-	public void visit(FormParMultiple formParMultiple) {
-		formParMultiple.getFormPar().obj.setFpPos(formParMultiple.getFormParList().objlist.size());
+		paramObj.setFpPos(this.formParList.size() + (this.classType != null ? 1 : 0));
 		
-		formParMultiple.objlist = formParMultiple.getFormParList().objlist;
-		formParMultiple.objlist.add(formParMultiple.getFormPar().obj);
-	}
-	
-	@Override
-	public void visit(FormParsYes formParsYes) {
-		formParsYes.objlist = formParsYes.getFormParList().objlist;
-	}
-	
-	@Override
-	public void visit(FormParsNo formParsNo) {
-		formParsNo.objlist = new ObjList();
+		this.formParList.add(paramObj);
 	}
 	
 	//------------------------------------------------------------------------
 	
 	@Override
+	public void visit(MethodDesignator methodDesignator) {
+		methodDesignator.obj = methodDesignator.getDesignator().obj;
+	}
+	
+	@Override
 	public void visit(MethodCall methodCall) {
-		Obj methodObj = methodCall.getDesignator().obj;
+		Obj methodObj = methodCall.getMethodDesignator().obj;
 		
-		if (methodObj.equals(SymbolTable.noObj)) {
+		if (methodObj.equals(SymbolTable.noObj))
 			return;
-		}
 		
 		if (methodObj.getKind() != Obj.Meth) {
 			report_error("Symbol " + methodObj.getName() + " is not a method or a function", methodCall);
@@ -338,13 +425,16 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		
 		ObjList paramList = methodCall.getActPars().objlist;
 		
-		if (paramList.size() != methodObj.getLevel()) {
-			report_error("Invalid number of arguments for method" + methodObj.getName(), methodCall);
+		if (paramList.size() != methodObj.getLevel() + methodObj.getFpPos()) {
+			report_error("Invalid number of arguments for method " + methodObj.getName(), methodCall);
 			return;
 		}
 		
 		for (Obj arg : methodObj.getLocalSymbols()) {
-			if (!paramList.assignableTo(arg, arg.getFpPos())) {
+			if (methodObj.getFpPos() == -1 && arg.getName().equals("this"))
+				continue;
+			
+			if (arg.getFpPos() > 0 && !paramList.assignableTo(arg.getType(), arg.getFpPos() + methodObj.getFpPos())) {
 				report_error("Type mismatch for " + arg.getFpPos() + ". argument", methodCall);
 				return;
 			}
@@ -377,27 +467,25 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	@Override
 	public void visit(StatementReturnVoid statementReturnVoid) {
-		if (!this.methodType.equals(SymbolTable.noType)) {
+		if (this.currentMethod == null)
+			return;
+		
+		if (!this.currentMethod.equals(SymbolTable.noType))
 			report_error("Non-void method must return an expression", statementReturnVoid);
-		}
 	}
 	
 	@Override
 	public void visit(StatementReturnExpr statementReturnExpr) {
-		if (this.methodType == null) {
+		if (this.currentMethod == null)
 			return;
-		}
 		
 		Struct exprType = statementReturnExpr.getExpr().struct;
 		
-		if (exprType == SymbolTable.noType) {
+		if (exprType == SymbolTable.noType)
 			return;
-		}
 		
-		if (!this.methodType.equals(exprType)) {
+		if (!this.currentMethod.equals(exprType))
 			report_error("Type of returned expression must be equal to method type", statementReturnExpr);
-			return;
-		}
 	}
 	
 	@Override
@@ -409,19 +497,16 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			return;
 		}
 		
-		if (!this.isBuiltin(designatorObj.getType())) {
+		if (!this.isBuiltin(designatorObj.getType()))
 			report_error("Only builtin types can be read", statementRead);
-			return;
-		}
 	}
 	
 	@Override
 	public void visit(StatementPrint statementPrint) {
 		Struct type = statementPrint.getExpr().struct;
 		
-		if (type.getKind() == Struct.None) {
+		if (type.getKind() == Struct.None)
 			return;
-		}
 		
 		if (!this.isBuiltin(statementPrint.getExpr().struct)) {
 			report_error("Only builtin types can be printed", statementPrint);
@@ -504,17 +589,16 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(DesignatorAssignOp designatorAssignOp) {
 		Obj designatorObj = designatorAssignOp.getDesignator().obj;
 		
-		if (designatorObj.equals(SymbolTable.noObj)) {
+		if (designatorObj.equals(SymbolTable.noObj))
 			return;
-		}
 		
 		if (!this.isAssignable(designatorObj)) {
-			report_error("Can't assign to " + designatorObj.getName(), designatorAssignOp);
+			report_error("Can't assign to " + designatorObj.getName() + "!", designatorAssignOp);
 			return;
 		}
 		
-		if (!designatorAssignOp.getExpr().struct.assignableTo(designatorObj.getType())) {
-			report_error("Type mismatch", designatorAssignOp);
+		if (!SymbolTable.assignable(designatorAssignOp.getExpr().struct, designatorObj.getType())) {
+			report_error("Type mismatch!", designatorAssignOp);
 			return;
 		}
 	}
@@ -523,17 +607,16 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(DesignatorPostfixOp designatorPostfixOp) {
 		Obj designatorObj = designatorPostfixOp.getDesignator().obj;
 		
-		if (designatorObj.equals(SymbolTable.noObj)) {
+		if (designatorObj.equals(SymbolTable.noObj))
 			return;
-		}
 		
 		if (!this.isAssignable(designatorObj)) {
-			report_error("Can't assign to " + designatorObj.getName(), designatorPostfixOp);
+			report_error("Can't assign to " + designatorObj.getName() + "!", designatorPostfixOp);
 			return;
 		}
 		
 		if (designatorObj.getType().getKind() != Struct.Int) {
-			report_error(designatorObj.getName() + " must be integer", designatorPostfixOp);
+			report_error(designatorObj.getName() + " must be integer!", designatorPostfixOp);
 			return;
 		}
 	}
@@ -542,27 +625,24 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(DesignatorMultiple designatorMultiple) {
 		ObjList designatorObjList = designatorMultiple.getDesignatorList().objlist;
 		
-		if (designatorMultiple.getDesignatorList() instanceof DesignatorNone) {
+		if (designatorMultiple.getDesignatorList() instanceof DesignatorNone)
 			designatorObjList = new ObjList();
-		}
 		
 		designatorObjList.getList().forEach(designatorObj -> {
-			if (designatorObj != SymbolTable.noObj && !this.isAssignable(designatorObj)) {
-				report_error("Can't assign to " + designatorObj.getName(), designatorMultiple);
-			}
+			if (designatorObj != SymbolTable.noObj && !this.isAssignable(designatorObj))
+				report_error("Can't assign to " + designatorObj.getName() + "!", designatorMultiple);
 		});
 		
 		Obj arrayObj = designatorMultiple.getDesignator().obj;
 		
 		if (arrayObj.getType().getKind() != Struct.Array) {
-			report_error("Symbol on right side of a multiple assignment must be an array", designatorMultiple);
+			report_error("Symbol on right side of a multiple assignment must be an array!", designatorMultiple);
 			return;
 		}
 		
 		for (int ind = 0; ind < designatorObjList.size(); ind++) {
-			if (!designatorObjList.assignableFrom(arrayObj, ind)) {
-				report_error("Type mismatch for " + designatorObjList.getList().get(ind).getName(), designatorMultiple);
-			}
+			if (!designatorObjList.assignableFrom(arrayObj.getType().getElemType(), ind))
+				report_error("Type mismatch for " + designatorObjList.getList().get(ind).getName() + "!", designatorMultiple);
 		}
 	}
 	
@@ -596,9 +676,15 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(DesignatorIdent designatorIdent) {
 		String designatorName = designatorIdent.getDesignatorName();
 		
-		if ((designatorIdent.obj = SymbolTable.find(designatorName)).equals(SymbolTable.noObj)) {
-			report_error("Symbol " + designatorName + " doesn't exist", designatorIdent);
+		designatorIdent.obj = SymbolTable.find(designatorName);
+		
+		if (designatorIdent.obj.getKind() == Obj.Type) {
+			report_error("Designator can't be a type!", designatorIdent);
+			return;
 		}
+		
+		if (designatorIdent.obj.equals(SymbolTable.noObj)) 
+			report_error("Symbol " + designatorName + " doesn't exist!", designatorIdent);
 	}
 	
 	@Override
@@ -607,26 +693,30 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		
 		Obj classObj = designatorClass.getDesignator().obj;
 		
-		if (classObj.equals(SymbolTable.noObj)) {
+		if (classObj.equals(SymbolTable.noObj))
 			return;
-		}
 		
 		Struct classType = classObj.getType();
 		
 		if (classType.getKind() != Struct.Class) {
-			report_error("Symbol " + classObj.getName() + " is not a class", designatorClass);
+			report_error("Symbol " + classObj.getName() + " is not a class!", designatorClass);
 			return;
 		}
 		
-		String fieldName = designatorClass.getFieldName();
-		Obj fieldObj = classType.getMembersTable().searchKey(fieldName);
+		Obj memberObj = null;
+		String memberName = designatorClass.getFieldName();
 		
-		if (fieldObj == null) {
-			report_error("Symbol " + classObj.getName() + " doesn't have field " + fieldName, designatorClass);
+		if (classType == this.classType)
+			memberObj = SymbolTable.currentScope.getOuter().findSymbol(memberName);
+		else
+			memberObj = classType.getMembersTable().searchKey(memberName);
+		
+		if (memberObj == null || memberObj == SymbolTable.noObj) {
+			report_error("Symbol " + classObj.getName() + " doesn't have field " + memberName + "!", designatorClass);
 			return;
 		}
 		
-		designatorClass.obj = fieldObj;
+		designatorClass.obj = memberObj;
 	}
 	
 	@Override
@@ -647,14 +737,14 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		Struct arrayType = arrayObj.getType();
 		
 		if (arrayType.getKind() != Struct.Array) {
-			report_error("Symbol " + arrayObj.getName() + " is not an array", designatorArray);
+			report_error("Symbol " + arrayObj.getName() + " is not an array!", designatorArray);
 			return;
 		}
 		
 		Struct exprType = designatorArray.getExpr().struct;
 		
 		if (exprType.getKind() != Struct.Int) {
-			report_error("Array must be indexed with an integer", designatorArray);
+			report_error("Array must be indexed with an integer!", designatorArray);
 			return;
 		}
 		
@@ -666,11 +756,14 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	@Override
 	public void visit(FactorDesignator factorDesignator) {
 		factorDesignator.obj = factorDesignator.getDesignator().obj;
+		
+		if (factorDesignator.getDesignator().obj.getKind() == Obj.Meth)
+			report_error("Method must be called!", factorDesignator);
 	}
 	
 	@Override
 	public void visit(FactorDesignatorMethod factorDesignatorMethod) {
-		factorDesignatorMethod.obj = factorDesignatorMethod.getMethodCall().getDesignator().obj;
+		factorDesignatorMethod.obj = factorDesignatorMethod.getMethodCall().getMethodDesignator().obj;
 	}
 	
 	@Override
@@ -706,20 +799,63 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(FactorNewArray factorNewArray) {
 		factorNewArray.obj = SymbolTable.noObj;
 		
-		if (factorNewArray.getType().struct == SymbolTable.noType) {
+		if (factorNewArray.getType().struct == SymbolTable.noType ||
+				factorNewArray.getExpr().struct == SymbolTable.noType)
 			return;
-		}
-		
-		if (factorNewArray.getExpr().struct == SymbolTable.noType) {
-			return;
-		}
 		
 		if (factorNewArray.getExpr().struct.getKind() != Struct.Int) {
-			report_error("Array size must be specified with an integer", factorNewArray);
+			report_error("Array size must be specified with an integer!", factorNewArray);
 			return;
 		}
 		
 		factorNewArray.obj = new Obj(Obj.NO_VALUE, "", new Struct(Struct.Array, factorNewArray.getType().struct));
+	}
+	
+	@Override
+	public void visit(FactorNewClass factorNewClass) {
+		factorNewClass.obj = SymbolTable.noObj;
+		factorNewClass.getNewClass().obj = SymbolTable.noObj;
+		
+		Struct classType = factorNewClass.getNewClass().getType().struct;
+		
+		if (classType.getKind() != Struct.Class) {
+			report_error("Type must be a class!", factorNewClass);
+			return;
+		}
+		
+		boolean checkConstructor = false;
+		
+		for (Obj constructor : classType.getMembers()) {
+			if (constructor.getKind() != Obj.Meth
+					|| constructor.getName().charAt(0) != '-'
+					|| constructor.getLevel() - 1 != factorNewClass.getActPars().objlist.size())
+				continue;
+			
+			boolean checkParams = true;
+			
+			for (Obj param : constructor.getLocalSymbols()) {
+				if (param.getName().equals("this") || param.getFpPos() < 0)
+					continue;
+				
+				if (!factorNewClass.getActPars().objlist.assignableTo(param.getType(), param.getFpPos() - 1)) {
+					checkParams = false;
+					break;
+				}
+			}
+			
+			if (checkParams) {
+				factorNewClass.getNewClass().obj = constructor;
+				checkConstructor = true;
+				break;
+			}
+		}
+		
+		if (!checkConstructor) {
+			report_error("No callable constructor with given types found!", factorNewClass);
+			return;
+		}
+		
+		factorNewClass.obj = new Obj(Obj.Var, "", classType);
 	}
 	
 	//------------------------------------------------------------------------
@@ -741,7 +877,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		}
 		
 		if (!(leftType == Struct.Int && rightType == Struct.Int)) {
-			report_error("Both operands must be of type int for arithmetic operations", factorMultiple);
+			report_error("Both operands must be of type int for arithmetic operations!", factorMultiple);
 			return;
 		}
 		
@@ -764,7 +900,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		}
 		
 		if (termNegative.getTerm().struct.getKind() != Struct.Int) {
-			report_error("Operand must be of type int for negation", termNegative);
+			report_error("Operand must be of type int for negation!", termNegative);
 			return;
 		}
 		
@@ -790,7 +926,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		}
 		
 		if (!(leftType == Struct.Int && rightType == Struct.Int)) {
-			report_error("Both operands must be of type int for arithmetic operations", termMultiple);
+			report_error("Both operands must be of type int for arithmetic operations!", termMultiple);
 			return;
 		}
 		
@@ -806,7 +942,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		}
 		
 		if (condExpr.getExpr().struct != SymbolTable.boolType) {
-			report_error("Expression in condition must be boolean", condExpr);
+			report_error("Expression in condition must be boolean!", condExpr);
 			return;
 		}
 	}
@@ -820,13 +956,11 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			return;
 		}
 		
-		if (!leftType.compatibleWith(rightType)) {
-			report_error("Types must be compatible to be compared to each other", condRelOp);
-		}
+		if (!leftType.compatibleWith(rightType))
+			report_error("Types must be compatible to be compared to each other!", condRelOp);
 		
-		if ((leftType.isRefType() || rightType.isRefType()) && condRelOp.getRelOp().opcode.getOpCode() > Code.ne) {
-			report_error("Only == and != are valid for reference types", condRelOp);
-		}
+		if ((leftType.isRefType() || rightType.isRefType()) && condRelOp.getRelOp().opcode.getOpCode() > Code.ne)
+			report_error("Only == and != are valid for reference types!", condRelOp);
 	}
 	
 	//------------------------------------------------------------------------
@@ -887,7 +1021,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	private boolean symbolExists(String symbolName, SyntaxNode syntaxNode) {
 		if (SymbolTable.currentScope.findSymbol(symbolName) != null) {
-			report_error("Symbol " + symbolName + " already exists", syntaxNode);
+			report_error("Symbol " + symbolName + " already exists!", syntaxNode);
 			return true;
 		}
 		return false;
@@ -915,7 +1049,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		StringBuilder msg = new StringBuilder();
 
 		if (info != null) {
-			msg.append("Error on line ").append(info.getLine()).append("!");
+			msg.append("Error on line ").append(info.getLine()).append(":");
 		}
 
 		msg.append(" ").append(message);

@@ -4,32 +4,44 @@ import java.util.ArrayList;
 import java.util.List;
 
 import rs.etf.pp1.symboltable.concepts.Obj;
+import rs.etf.pp1.symboltable.concepts.Struct;
 
 public class ObjList {
 	
-	private List<Obj> objList = new ArrayList<>();
+	private List<Obj> list = new ArrayList<>();
 	
 	public void add(Obj obj) {
-		this.objList.add(obj);
+		this.list.add(obj);
+	}
+	
+	public void addAtIndex(Obj obj, int index) {
+		this.list.add(index, obj);
 	}
 	
 	public int size() {
-		return this.objList.size();
+		return this.list.size();
 	}
 	
 	public List<Obj> getList() {
-		return this.objList;
+		return this.list;
 	}
 	
-	public boolean assignableFrom(Obj src, int ind) {
-		return this.objList.get(ind) == SymbolTable.noObj || src.getType().getElemType().assignableTo(this.objList.get(ind).getType());
+	public boolean assignableFrom(Struct srcType, int ind) {
+		return this.list.get(ind) == SymbolTable.noObj ||
+				srcType.assignableTo(this.list.get(ind).getType());
 	}
 	
-	public boolean assignableTo(Obj dest, int ind) {
-		return this.objList.get(ind) == SymbolTable.noObj || this.objList.get(ind).getType().assignableTo(dest.getType());
+	public boolean assignableTo(Struct destType, int ind) {
+		return this.list.get(ind) == SymbolTable.noObj ||
+				SymbolTable.assignable(this.list.get(ind).getType(), destType);
 	}
 	
-	public boolean equalTo(Obj param, int ind) {
-		return this.objList.get(ind).getType().equals(param.getType());
+	public boolean equalTo(Struct objType, int ind) {
+		return this.list.get(ind) == SymbolTable.noObj || 
+				objType.equals(this.list.get(ind).getType());
+	}
+	
+	public void clear() {
+		this.list.clear();
 	}
 }
