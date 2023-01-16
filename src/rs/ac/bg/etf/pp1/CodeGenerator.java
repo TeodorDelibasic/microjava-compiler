@@ -162,21 +162,19 @@ public class CodeGenerator extends VisitorAdaptor {
 			
 			Code.put(Code.call);
 			Code.put2(dest);
+		} else {
+			Code.put(Code.getfield);
+			Code.put2(0);
 			
-			return;
-		}	
-		
-		Code.put(Code.getfield);
-		Code.put2(0);
-		
-		Code.put(Code.invokevirtual);
-		for (int i = 0; i < methodObj.getName().length(); ++i) {
-			Code.put4(methodObj.getName().charAt(i));
+			Code.put(Code.invokevirtual);
+			for (int i = 0; i < methodObj.getName().length(); ++i) {
+				Code.put4(methodObj.getName().charAt(i));
+			}
+			Code.put(-1 >>> 24);
+			Code.put(-1 >>> 16);
+			Code.put(-1 >>> 8);
+			Code.put(-1 >>> 0);
 		}
-		Code.put(-1 >>> 24);
-		Code.put(-1 >>> 16);
-		Code.put(-1 >>> 8);
-		Code.put(-1 >>> 0);
 		
 		this.methodCallStack.pop();
 	}

@@ -16,7 +16,11 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	@Override
 	public void visit(ProgramHeader programHeader) {
-		programHeader.obj = SymbolTable.insert(Obj.Prog, programHeader.getProgName(), SymbolTable.noType);
+		if (this.symbolExists(programHeader.getProgName(), programHeader))
+			programHeader.obj = SymbolTable.insert(Obj.Prog, "+", SymbolTable.noType);
+		else
+			programHeader.obj = SymbolTable.insert(Obj.Prog, programHeader.getProgName(), SymbolTable.noType);
+		
 		SymbolTable.openScope();
 	}
 	
@@ -164,6 +168,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 					Obj childParam = SymbolTable.insert(Obj.Var, 
 							parentParam.getName(),
 							parentParam.getType());
+					
 					childParam.setAdr(parentParam.getAdr());
 					childParam.setFpPos(parentParam.getFpPos());
 				}
@@ -715,7 +720,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			}
 		} else if (designatorIdent.obj.getKind() == Obj.Fld) {
 			report_info("Class field " + designatorName, designatorIdent);
-		} else if (designatorIdent.obj.getKind() == Obj.Meth) {
+		} else if (designatorIdent.obj.getKind() == Obj.Meth && designatorIdent.obj.getFpPos() < 0) {
 			report_info("Class method " + designatorName, designatorIdent);
 		}
 	}
@@ -894,6 +899,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			report_error("No callable constructor with given types found!", factorNewClass);
 			return;
 		}
+		
+		report_info("Creating new instance of class " + factorNewClass.getNewClass().getType().getTypeName(), factorNewClass);
 		
 		factorNewClass.obj = new Obj(Obj.Var, "", classType);
 	}

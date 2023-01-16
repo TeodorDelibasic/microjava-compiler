@@ -107,7 +107,7 @@ nonterminal rs.etf.pp1.symboltable.concepts.Obj Factor, NewClass;
 nonterminal Condition, CondTerm, CondFact, Or;
 
 nonterminal rs.ac.bg.etf.pp1.OpCode AddOp, MulOp, RelOp;
-nonterminal AssignOp;
+nonterminal AssignOp, AssignOpError;
 
 
 
@@ -294,7 +294,7 @@ ForeachHeader			::= (ForeachHeader) Designator DOT FOREACH LPAREN IDENT:element;
 
 DesignatorStatement		::= (DesignatorAssignOp) Designator AssignOp Expr SEMI
 							|
-							(DesignatorAssignOpError) error SEMI
+							(DesignatorAssignOpError) Designator AssignOpError
 							|
 							(DesignatorMethod) MethodCall SEMI
 							|
@@ -404,7 +404,9 @@ Or						::= (Or) OR;
 							
 //------------------------------------------------------------------------
 
-AssignOp				::= (AssignOp) EQUAL;	
+AssignOp				::= (AssignOp) EQUAL;
+
+AssignOpError			::= (AssignOpError) EQUAL error SEMI;
 
 AddOp					::= (AddOpAdd) PLUS
 							|
