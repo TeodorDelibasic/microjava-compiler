@@ -200,7 +200,7 @@ ClassMethods			::= (ClassMethodsYes) LCURLY ConstructorDeclList MethodDeclList R
 ConstructorDeclList		::= (ConstructorDeclYes) ConstructorDeclList ConstructorDecl
 							|
 							(ConstructorDeclNo) /* epsilon */
-							;
+							;						
 
 ConstructorDecl			::= (ConstructorDecl) ConstructorSignature VarDeclStmtList LCURLY StatementList RCURLY;							
 	

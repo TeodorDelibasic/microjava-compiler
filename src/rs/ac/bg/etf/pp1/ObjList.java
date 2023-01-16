@@ -38,7 +38,7 @@ public class ObjList {
 	
 	public boolean equalTo(Struct objType, int ind) {
 		return this.list.get(ind) == SymbolTable.noObj || 
-				objType.equals(this.list.get(ind).getType());
+				SymbolTable.equals(objType, this.list.get(ind).getType());
 	}
 	
 	public void clear() {

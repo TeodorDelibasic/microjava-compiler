@@ -1,0 +1,111 @@
+program semantic_error_recovery
+
+const int c1 = 'c';
+const bool c2 = 1;
+const char c3 = true;
+
+const int validConst = 5;
+
+class B extends int {
+
+}
+
+class C {
+	{
+		D() { }
+		
+		C(int a) { }
+		C(int b) { }
+	}
+}
+
+notatype n;
+
+int i;
+i j;
+
+class A {
+
+}
+
+A a1, a2;
+
+{
+	void designator() int a; char b; {
+		validConst = 5;
+		a = true;
+		
+		validConst++;
+		b--;
+		
+		b();
+	}
+	
+	void multipleAssignment() int a[]; int b; int c; char d; {
+		[validConst, ] = a;
+		[b, ] = c;
+		[d, , ] = a;
+	}
+	
+	void breakContinue() {
+		continue;
+		break;
+	}
+	
+	void printRead() A a; {
+		read(validConst);
+		read(a);
+		
+		print(a);
+	}
+	
+	int m() {
+		return 'c';
+	}
+	
+	int nonvoid() {
+		return;
+	}
+	
+	void branch() int a, b; char c; int arr[]; {
+		if (2) print(true);
+		
+		while (2) print(true);
+		
+		a.foreach(b => print(2); );
+		arr.foreach(c => print(2); );
+	}
+	
+	void valid(int a) { }
+	
+	void methodCall() { 
+		valid();
+		valid('c'); 
+	}
+	
+	void condition() A a, b; {
+		if (2 > true) { print(2); }
+		if (a > b) { print(2); } 
+	}
+	
+	void expressions() int a, b; char c, d; {
+		a = b + c;
+		a = b * c;
+		c = - d;
+	}
+	
+	void newCheck() int a[]; A b; {
+		a = new int['c'];
+		b = new int();
+	}
+	
+	void access() int a, b; {
+		print(a.b);
+		print(a[b]);
+	}
+
+	void notmain() {
+		
+	}
+
+}

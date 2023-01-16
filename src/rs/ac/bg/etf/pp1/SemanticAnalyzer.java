@@ -25,11 +25,11 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		Obj mainMethod = SymbolTable.currentScope.findSymbol("main");
 		
 		if (mainMethod == null)
-			report_error("Global main method must exist", null);
+			report_error("Global main method must exist!", null);
 		else if (mainMethod.getType() != SymbolTable.noType)
-			report_error("Main method must be void", null);
+			report_error("Main method must be void!", null);
 		else if (mainMethod.getLevel() != 0)
-			report_error("Main method can't have parameters", null);
+			report_error("Main method can't have parameters!", null);
 		
 		SymbolTable.chainLocalSymbols(program.getProgramHeader().obj);
 		SymbolTable.closeScope();
@@ -37,18 +37,18 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	//------------------------------------------------------------------------	
 	
-	private Struct currentType = SymbolTable.nullType;
+	private Struct currentType = SymbolTable.noType;
 	
 	@Override
 	public void visit(Type type) {
-		type.struct = SymbolTable.nullType;
+		type.struct = SymbolTable.noType;
 		
 		Obj typeObj = SymbolTable.find(type.getTypeName());
 
 		if (typeObj == SymbolTable.noObj)
-			this.report_error("Type " + type.getTypeName() + " not found", type);
+			this.report_error("Type " + type.getTypeName() + " not found!", type);
 		else if (typeObj.getKind() != Obj.Type)
-			this.report_error(type.getTypeName() + " is not a type", type);
+			this.report_error(type.getTypeName() + " is not a type!", type);
 		else
 			type.struct = typeObj.getType();
 
@@ -73,10 +73,10 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	}
 	
 	private void declareConstant(String constName, int constValue, Struct constType, SyntaxNode syntaxNode) {
-		if (this.currentType == SymbolTable.nullType || this.symbolExists(constName, syntaxNode))
+		if (this.currentType == SymbolTable.noType || this.symbolExists(constName, syntaxNode))
 			return;
 		
-		if (!this.currentType.equals(constType)) {
+		if (!SymbolTable.equals(this.currentType, constType)) {
 			report_error("Type doesn't match for constant " + constName, syntaxNode);
 			return;
 		}
@@ -86,9 +86,9 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	@Override
 	public void visit(ConstDecl constDecl) {
-		if (!this.currentType.equals(SymbolTable.intType) &&
-				!this.currentType.equals(SymbolTable.charType) &&
-				!this.currentType.equals(SymbolTable.boolType)) {
+		if (this.currentType != SymbolTable.intType 
+				&& this.currentType != SymbolTable.charType 
+				&& this.currentType != SymbolTable.boolType) {
 			report_error("Constants must have builtin type", constDecl);
 		}
 	}
@@ -104,7 +104,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	@Override
 	public void visit(ClassHeader classHeader) {
 		this.className = classHeader.getClassName();
-		this.classType = SymbolTable.nullType;
+		this.classType = SymbolTable.noType;
 		
 		if (this.symbolExists(this.className, classHeader))
 			return;
@@ -116,17 +116,26 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		
 		SymbolTable.insert(Obj.Fld, "-TVF", SymbolTable.intType);
 		
+		this.generateDefaultConstructor();
+		
 		if (this.classParent != null)
 			this.insertParentMembers();
 	}
 	
 	@Override
 	public void visit(ClassParentYes classParent) {
+		this.classParent = SymbolTable.noType;
+		
+		if (classParent.getType().struct.getKind() != Struct.Class) {
+			report_error("Classes can only extend other classes!", classParent);
+			return;
+		}
+		
 		this.classParent = classParent.getType().struct;
 	}
 	
 	private void insertParentMembers() {
-		if (this.classParent == SymbolTable.nullType)
+		if (this.classParent == SymbolTable.noType)
 			return;
 		
 		for (Obj member : this.classParent.getMembers()) {
@@ -175,7 +184,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	@Override
 	public void visit(ClassDecl classDecl) {
-		if (this.classType == SymbolTable.nullType) {
+		if (this.classType == SymbolTable.noType) {
 			return;
 		} else {
 			classDecl.struct = this.classType;
@@ -186,6 +195,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		}
 		
 		this.virtualMethods = new VirtualMethods();
+		
+		this.constructorCnt = 0;
 		
 		this.classType = null;
 		this.className = null;
@@ -200,8 +211,10 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(ConstructorSignature constructorSignature) {
 		constructorSignature.obj = SymbolTable.noObj;
 	
-		if (this.classType == SymbolTable.nullType)
+		if (this.classType == SymbolTable.noType)
 			return;
+
+		SymbolTable.currentScope.getLocals().deleteKey("-");
 		
 		if (!constructorSignature.getClassName().equals(this.className)) {
 			report_error("Constructor must have the same name as class!", constructorSignature);
@@ -214,14 +227,14 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 					|| constructor.getLevel() - 1 != this.formParList.size())
 				continue;
 			
-			boolean check = false;
+			boolean check = true;
 			
 			for (Obj param : constructor.getLocalSymbols()) {
 				if (param.getName().equals("this") || param.getFpPos() < 0)
 					continue;
 				
-				if (this.formParList.equalTo(param.getType(), param.getFpPos() - 1)) {
-					check = true;
+				if (!this.formParList.equalTo(param.getType(), param.getFpPos() - 1)) {
+					check = false;
 					break;
 				}
 			}
@@ -234,7 +247,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		
 		this.currentMethod = SymbolTable.noType;
 		
-		constructorSignature.obj = SymbolTable.insert(Obj.Meth, "-" + this.constructorCnt, this.currentMethod);
+		constructorSignature.obj = SymbolTable.insert(Obj.Meth, "-" + this.constructorCnt++, this.currentMethod);
 		
 		SymbolTable.openScope();
 		
@@ -264,25 +277,12 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	}
 	
 	@Override
-	public void visit(ConstructorDeclYes donstructorDeclYes) {
-		this.constructorCnt++;
-	}
-	
-	@Override
-	public void visit(ConstructorDeclNo constructorDeclNo) {
-		if (this.constructorCnt == 0)
-			this.generateDefaultConstructor();
-		else
-			this.constructorCnt = 0;
-	}
-	
-	@Override
 	public void visit(ClassMethodsNo classMethodsNo) {
 		this.generateDefaultConstructor();
 	}
 	
 	private void generateDefaultConstructor() {
-		Obj defaultObj = SymbolTable.insert(Obj.Meth, "-" + this.constructorCnt, SymbolTable.noType);
+		Obj defaultObj = SymbolTable.insert(Obj.Meth, "-", SymbolTable.noType);
 		defaultObj.setLevel(1);
 		
 		SymbolTable.openScope();
@@ -295,7 +295,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	@Override
 	public void visit(VarDecl varDecl) {
-		if (this.classType == SymbolTable.nullType || this.currentMethod == SymbolTable.nullType)
+		if (this.classType == SymbolTable.noType || this.currentMethod == SymbolTable.nullType)
 			return;
 		
 		String varDeclName = varDecl.getVarName();
@@ -330,7 +330,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(MethodSignature methodSignature) {
 		methodSignature.obj = SymbolTable.noObj;
 		
-		if (this.classType == SymbolTable.nullType)
+		if (this.classType == SymbolTable.noType)
 			return;
 		
 		if (methodSignature.getMethodType() instanceof VoidYes)
@@ -425,18 +425,18 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(MethodCall methodCall) {
 		Obj methodObj = methodCall.getMethodDesignator().obj;
 		
-		if (methodObj.equals(SymbolTable.noObj))
+		if (methodObj == SymbolTable.noObj)
 			return;
 		
 		if (methodObj.getKind() != Obj.Meth) {
-			report_error("Symbol " + methodObj.getName() + " is not a method or a function", methodCall);
+			report_error("Symbol " + methodObj.getName() + " is not a method or a function!", methodCall);
 			return;
 		}
 		
 		ObjList paramList = methodCall.getActPars().objlist;
 		
 		if (paramList.size() != methodObj.getLevel() + methodObj.getFpPos()) {
-			report_error("Invalid number of arguments for method " + methodObj.getName(), methodCall);
+			report_error("Invalid number of arguments for method " + methodObj.getName() + "!", methodCall);
 			return;
 		}
 		
@@ -444,8 +444,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			if (methodObj.getFpPos() == -1 && arg.getName().equals("this"))
 				continue;
 			
-			if (arg.getFpPos() > 0 && !paramList.assignableTo(arg.getType(), arg.getFpPos() + methodObj.getFpPos())) {
-				report_error("Type mismatch for " + arg.getFpPos() + ". argument", methodCall);
+			if (arg.getFpPos() >= 0 && !paramList.assignableTo(arg.getType(), arg.getFpPos() + methodObj.getFpPos())) {
+				report_error("Type mismatch for " + arg.getFpPos() + ". argument!", methodCall);
 				return;
 			}
 		}
@@ -483,8 +483,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		if (this.currentMethod == null)
 			return;
 		
-		if (!this.currentMethod.equals(SymbolTable.noType))
-			report_error("Non-void method must return an expression", statementReturnVoid);
+		if (this.currentMethod != SymbolTable.noType)
+			report_error("Non-void method must return an expression!", statementReturnVoid.getParent());
 	}
 	
 	@Override
@@ -498,7 +498,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			return;
 		
 		if (!SymbolTable.assignable(exprType, this.currentMethod))
-			report_error("Type of returned expression must be equal to method type", statementReturnExpr);
+			report_error("Type of returned expression must be assignable to method type!", statementReturnExpr);
 	}
 	
 	@Override
@@ -506,12 +506,12 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		Obj designatorObj = statementRead.getDesignator().obj;
 		
 		if (!this.isAssignable(designatorObj)) {
-			report_error("Can't assign to " + designatorObj.getName(), statementRead);
+			report_error("Can't assign to " + designatorObj.getName() + "!", statementRead);
 			return;
 		}
 		
 		if (!this.isBuiltin(designatorObj.getType()))
-			report_error("Only builtin types can be read", statementRead);
+			report_error("Only builtin types can be read!", statementRead);
 	}
 	
 	@Override
@@ -522,7 +522,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			return;
 		
 		if (!this.isBuiltin(statementPrint.getExpr().struct)) {
-			report_error("Only builtin types can be printed", statementPrint);
+			report_error("Only builtin types can be printed!", statementPrint);
 			return;
 		}
 	}
@@ -534,7 +534,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	@Override
 	public void visit(StatementContinue statementContinue) {
 		if (this.inLoop == 0) {
-			report_error("Continue can only be used within a loop", statementContinue);
+			report_error("Continue can only be used within a loop", statementContinue.getParent());
 			return;
 		}
 	}
@@ -542,7 +542,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	@Override
 	public void visit(StatementBreak statementBreak) {
 		if (this.inLoop == 0) {
-			report_error("Break can only be used within a loop", statementBreak);
+			report_error("Break can only be used within a loop", statementBreak.getParent());
 			return;
 		}
 	}
@@ -572,7 +572,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		}
 		
 		if (arrayObj.getType().getKind() != Struct.Array) {
-			report_error("Foreach can be called for arrays only", foreachHeader);
+			report_error("Foreach can be called for arrays only!", foreachHeader);
 			return;
 		}
 		
@@ -581,12 +581,12 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		foreachHeader.obj = SymbolTable.find(elemName);
 		
 		if (foreachHeader.obj.getKind() != Obj.Var || foreachHeader.obj == SymbolTable.noObj) {
-			report_error(elemName + " must be a local or global variable", foreachHeader);
+			report_error(elemName + " must be a local or global variable!", foreachHeader);
 			return;
 		}
 		
-		if (!foreachHeader.obj.getType().equals(arrayObj.getType().getElemType())) {
-			report_error("Type mismatch", foreachHeader);
+		if (!SymbolTable.equals(foreachHeader.obj.getType(), arrayObj.getType().getElemType())) {
+			report_error("Type mismatch!", foreachHeader);
 			return;
 		}
 	}
@@ -602,7 +602,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(DesignatorAssignOp designatorAssignOp) {
 		Obj designatorObj = designatorAssignOp.getDesignator().obj;
 		
-		if (designatorObj.equals(SymbolTable.noObj))
+		if (designatorObj == SymbolTable.noObj)
 			return;
 		
 		if (!this.isAssignable(designatorObj)) {
@@ -620,7 +620,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(DesignatorPostfixOp designatorPostfixOp) {
 		Obj designatorObj = designatorPostfixOp.getDesignator().obj;
 		
-		if (designatorObj.equals(SymbolTable.noObj))
+		if (designatorObj == SymbolTable.noObj)
 			return;
 		
 		if (!this.isAssignable(designatorObj)) {
@@ -696,7 +696,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			return;
 		}
 		
-		if (designatorIdent.obj.equals(SymbolTable.noObj)) {
+		if (designatorIdent.obj == SymbolTable.noObj) {
 			report_error("Symbol " + designatorName + " doesn't exist!", designatorIdent);
 			return;
 		}
@@ -726,7 +726,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		
 		Obj classObj = designatorClass.getDesignator().obj;
 		
-		if (classObj.equals(SymbolTable.noObj))
+		if (classObj == SymbolTable.noObj)
 			return;
 		
 		Struct classType = classObj.getType();
@@ -768,7 +768,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		
 		Obj arrayObj = designatorArray.getLoadDesignatorArray().obj;
 		
-		if (arrayObj.equals(SymbolTable.noObj)) {
+		if (arrayObj == SymbolTable.noObj) {
 			return;
 		}
 		
@@ -996,7 +996,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			return;
 		}
 		
-		if (!leftType.compatibleWith(rightType))
+		if (!SymbolTable.compatible(leftType, rightType))
 			report_error("Types must be compatible to be compared to each other!", condRelOp);
 		
 		if ((leftType.isRefType() || rightType.isRefType()) && condRelOp.getRelOp().opcode.getOpCode() > Code.ne)
@@ -1086,13 +1086,13 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	private void report_error(String message, SyntaxNode info) {
 		errorDetected = true;
 
-		StringBuilder msg = new StringBuilder();
+		StringBuilder msg = new StringBuilder("Semantic error");
 
 		if (info != null) {
-			msg.append("Error on line ").append(info.getLine()).append(":");
+			msg.append(" on line ").append(info.getLine());
 		}
 
-		msg.append(" ").append(message);
+		msg.append(":").append(" ").append(message);
 
 		System.err.println(msg.toString());
 	}

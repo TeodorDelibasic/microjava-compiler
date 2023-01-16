@@ -34,6 +34,11 @@ public class ErrorVisitor extends VisitorAdaptor {
 		report_error("Assignment statement to ;", errorNode.getParent());
 	}
 	
+	@Override
+	public void visit(ConditionError errorNode) {
+		report_error("Condition to )", errorNode.getParent());
+	}
+	
 	private void report_error(String message, SyntaxNode info) {
 		StringBuilder msg = new StringBuilder();
 
