@@ -54,8 +54,7 @@ public class VirtualMethods {
 	}
 
 	public boolean validReturnType(String methodName, Struct currentMethod) {
-		return  currentMethod.equals(this.parentMethods.get(methodName).getType())
-				|| currentMethod.assignableTo(this.parentMethods.get(methodName).getType());
+		return SymbolTable.assignable(currentMethod, this.parentMethods.get(methodName).getType());
 	}
 
 	public void resolveAdr() {

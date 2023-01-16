@@ -14,8 +14,12 @@ public class SymbolTable extends Tab {
 	}
 	
 	public static boolean assignable(Struct src, Struct dst) {
+		if (src.getKind() == Struct.Array && dst.getKind() == Struct.Array) {
+			return SymbolTable.assignable(src.getElemType(), dst.getElemType());
+		}
+		
 		if (src.getKind() == Struct.Class && dst.getKind() == Struct.Class) {
-			for (Struct parentClass = src; parentClass != null; parentClass = src.getElemType()) {
+			for (Struct parentClass = src; parentClass != null; parentClass = parentClass.getElemType()) {
 				if (parentClass == dst)
 					return true;
 			}

@@ -39,12 +39,13 @@ public class Compiler {
 			
 			SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer();
 			
+			program.traverseBottomUp(new ErrorVisitor());
 			program.traverseBottomUp(semanticAnalyzer);
 			
 			SymbolTable.dump(new DumpVisitor());
 			
 			if (parser.errorDetected || semanticAnalyzer.hasErrors()) {
-				System.out.println("Neuspesno");
+				System.out.println("COMPILE TIME ERROR");
 				return;
 			}
 			
@@ -57,7 +58,7 @@ public class Compiler {
 			program.traverseBottomUp(codeGenerator);
 			Code.write(new FileOutputStream(destination));
 			
-			System.out.println("Uspesno");
+			System.out.println("SUCCESSFUL COMPILATION");
 			
 		} catch (Exception e) {
 			// TODO Auto-generated catch block

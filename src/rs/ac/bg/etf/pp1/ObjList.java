@@ -28,7 +28,7 @@ public class ObjList {
 	
 	public boolean assignableFrom(Struct srcType, int ind) {
 		return this.list.get(ind) == SymbolTable.noObj ||
-				srcType.assignableTo(this.list.get(ind).getType());
+				SymbolTable.assignable(srcType, this.list.get(ind).getType());
 	}
 	
 	public boolean assignableTo(Struct destType, int ind) {

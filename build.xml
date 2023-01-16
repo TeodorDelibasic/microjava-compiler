@@ -5,13 +5,14 @@
 		<delete>
 			<fileset dir="src/rs/ac/bg/etf/pp1">
 				<exclude name="Compiler.java"/>
-				<exclude name="SymbolTable.java"/>
-				<exclude name="SemanticAnalyzer.java"/>
 				<exclude name="DumpVisitor.java"/>
+				<exclude name="ErrorVisitor.java"/>
+				<exclude name="SemanticAnalyzer.java"/>
 				<exclude name="CodeGenerator.java"/>
+				<exclude name="SymbolTable.java"/>
+				<exclude name="OpCode.java"/>
 				<exclude name="ObjList.java"/>
 				<exclude name="VirtualMethods.java"/>
-				<exclude name="OpCode.java"/>
 			</fileset>
 		</delete>
 		<delete>

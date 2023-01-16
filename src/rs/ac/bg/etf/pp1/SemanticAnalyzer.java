@@ -1,11 +1,8 @@
 package rs.ac.bg.etf.pp1;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import rs.ac.bg.etf.pp1.ast.*;
-import rs.etf.pp1.mj.runtime.Code;
 import rs.etf.pp1.symboltable.concepts.*;
+import rs.etf.pp1.mj.runtime.Code;
 
 public class SemanticAnalyzer extends VisitorAdaptor {
 	
@@ -28,8 +25,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		Obj mainMethod = SymbolTable.currentScope.findSymbol("main");
 		
 		if (mainMethod == null)
-			report_error("Main method must exist", null);
-		else if (!mainMethod.getType().equals(SymbolTable.noType))
+			report_error("Global main method must exist", null);
+		else if (mainMethod.getType() != SymbolTable.noType)
 			report_error("Main method must be void", null);
 		else if (mainMethod.getLevel() != 0)
 			report_error("Main method can't have parameters", null);
@@ -48,7 +45,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		
 		Obj typeObj = SymbolTable.find(type.getTypeName());
 
-		if (typeObj.equals(SymbolTable.noObj))
+		if (typeObj == SymbolTable.noObj)
 			this.report_error("Type " + type.getTypeName() + " not found", type);
 		else if (typeObj.getKind() != Obj.Type)
 			this.report_error(type.getTypeName() + " is not a type", type);
@@ -100,6 +97,9 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	private String className = null;
 	private Struct classType = null;
+	private Struct classParent = null;
+	
+	private VirtualMethods virtualMethods = new VirtualMethods();
 	
 	@Override
 	public void visit(ClassHeader classHeader) {
@@ -115,18 +115,21 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		SymbolTable.openScope();
 		
 		SymbolTable.insert(Obj.Fld, "-TVF", SymbolTable.intType);
+		
+		if (this.classParent != null)
+			this.insertParentMembers();
 	}
-	
-	private VirtualMethods virtualMethods = new VirtualMethods();
 	
 	@Override
 	public void visit(ClassParentYes classParent) {
-		Struct parentType = classParent.getType().struct;
-		
-		if (parentType == SymbolTable.nullType)
+		this.classParent = classParent.getType().struct;
+	}
+	
+	private void insertParentMembers() {
+		if (this.classParent == SymbolTable.nullType)
 			return;
 		
-		for (Obj member : parentType.getMembers()) {
+		for (Obj member : this.classParent.getMembers()) {
 			if (member.getKind() == Obj.Fld) {
 				if (member.getName().equals("-TVF"))
 					continue;
@@ -167,7 +170,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			}
 		}
 		
-		this.classType.setElementType(parentType);
+		this.classType.setElementType(this.classParent);
 	}
 	
 	@Override
@@ -183,8 +186,10 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		}
 		
 		this.virtualMethods = new VirtualMethods();
+		
 		this.classType = null;
 		this.className = null;
+		this.classParent = null;
 	}
 	
 	//------------------------------------------------------------------------
@@ -271,6 +276,11 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			this.constructorCnt = 0;
 	}
 	
+	@Override
+	public void visit(ClassMethodsNo classMethodsNo) {
+		this.generateDefaultConstructor();
+	}
+	
 	private void generateDefaultConstructor() {
 		Obj defaultObj = SymbolTable.insert(Obj.Meth, "-" + this.constructorCnt, SymbolTable.noType);
 		defaultObj.setLevel(1);
@@ -345,7 +355,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 					this.virtualMethods.overrideMethod(methodName);
 					SymbolTable.currentScope.getLocals().deleteKey(methodName);
 				} else {
-					report_error("Invalid override", methodSignature);
+					report_error("Invalid override!", methodSignature);
 					return;
 				}
 			}
@@ -439,6 +449,9 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 				return;
 			}
 		}
+		
+		if (methodObj.getFpPos() == 0)
+			report_info("Global function " + methodObj.getName(), methodCall);
 	}
 	
 	@Override
@@ -484,7 +497,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		if (exprType == SymbolTable.noType)
 			return;
 		
-		if (!this.currentMethod.equals(exprType))
+		if (!SymbolTable.assignable(exprType, this.currentMethod))
 			report_error("Type of returned expression must be equal to method type", statementReturnExpr);
 	}
 	
@@ -683,8 +696,28 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			return;
 		}
 		
-		if (designatorIdent.obj.equals(SymbolTable.noObj)) 
+		if (designatorIdent.obj.equals(SymbolTable.noObj)) {
 			report_error("Symbol " + designatorName + " doesn't exist!", designatorIdent);
+			return;
+		}
+		
+		if (designatorIdent.obj.getKind() == Obj.Con) {
+			report_info("Constant " + designatorName, designatorIdent);
+		} else if (designatorIdent.obj.getKind() == Obj.Var) {
+			if (designatorIdent.obj.getLevel() == 0) {
+				report_info("Global variable " + designatorName, designatorIdent);
+			}
+			else {
+				if (designatorIdent.obj.getFpPos() < 0)
+					report_info("Local variable " + designatorName, designatorIdent);
+				else
+					report_info("Formal parameter " + designatorName, designatorIdent);
+			}
+		} else if (designatorIdent.obj.getKind() == Obj.Fld) {
+			report_info("Class field " + designatorName, designatorIdent);
+		} else if (designatorIdent.obj.getKind() == Obj.Meth) {
+			report_info("Class method " + designatorName, designatorIdent);
+		}
 	}
 	
 	@Override
@@ -715,6 +748,11 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			report_error("Symbol " + classObj.getName() + " doesn't have field " + memberName + "!", designatorClass);
 			return;
 		}
+		
+		if (memberObj.getKind() == Obj.Fld)
+			report_info("Class field " + memberName, designatorClass);
+		else if (memberObj.getKind() == Obj.Meth)
+			report_info("Class method " + memberName, designatorClass);
 		
 		designatorClass.obj = memberObj;
 	}
@@ -747,6 +785,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			report_error("Array must be indexed with an integer!", designatorArray);
 			return;
 		}
+		
+		report_info("Array element " + arrayObj.getName(), designatorArray);
 		
 		designatorArray.obj = new Obj(Obj.Elem, arrayObj.getName() + "[]", arrayType.getElemType());
 	}
@@ -1061,7 +1101,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		StringBuilder msg = new StringBuilder(message);
 
 		if (info != null) {
-			msg.append(" na liniji ").append(info.getLine());
+			msg.append(" detected on line ").append(info.getLine());
 		}
 
 		System.out.println(msg.toString());

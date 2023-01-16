@@ -160,7 +160,12 @@ VarDeclStmtList			::= (VarDeclStmtYes) VarDeclStmt VarDeclStmtList
 							(VarDeclStmtNo) /* epsilon */
 							;						
 					
-VarDeclStmt				::= (VarDeclStmt) Type VarDeclList SEMI;
+VarDeclStmt				::= (VarDeclStmtValid) Type VarDeclList SEMI
+							|
+							(VarDeclStmtErrorComma) error COMMA VarDeclList SEMI
+							|
+							(VarDeclStmtErrorSemi) error SEMI
+							;
 
 VarDeclList				::= (VarDeclMultiple) VarDecl COMMA VarDeclList
 							|
@@ -172,17 +177,19 @@ VarDecl					::= (VarDecl) IDENT:varName VarArray;
 VarArray 				::= (VarArrayYes) LSQUARE RSQUARE
 							|
 							(VarArrayNo) /* epsilon */
-							;						
+							;												
 
 //------------------------------------------------------------------------
 
-ClassDecl				::= (ClassDecl) ClassHeader ClassParent LCURLY VarDeclStmtList ClassMethods RCURLY;
+ClassDecl				::= (ClassDecl) ClassHeader LCURLY VarDeclStmtList ClassMethods RCURLY;
 
-ClassHeader				::= (ClassHeader) CLASS IDENT:className;
+ClassHeader				::= (ClassHeader) CLASS IDENT:className ClassParent;
 
 ClassParent				::= (ClassParentYes) EXTENDS Type
 							|
 							(ClassParentNo) /* epsilon */
+							|
+							(ClassParentError) error
 							;						
 							
 ClassMethods			::= (ClassMethodsYes) LCURLY ConstructorDeclList MethodDeclList RCURLY
@@ -197,7 +204,7 @@ ConstructorDeclList		::= (ConstructorDeclYes) ConstructorDeclList ConstructorDec
 
 ConstructorDecl			::= (ConstructorDecl) ConstructorSignature VarDeclStmtList LCURLY StatementList RCURLY;							
 	
-ConstructorSignature	::= (ConstructorSignature) 	IDENT:className LPAREN FormPars RPAREN;
+ConstructorSignature	::= (ConstructorSignature) 	IDENT:className LPAREN FormPars;
 							
 //------------------------------------------------------------------------
 					
@@ -208,7 +215,7 @@ MethodDeclList			::= (MethodDeclYes) MethodDecl MethodDeclList
 					
 MethodDecl				::= (MethodDecl) MethodSignature VarDeclStmtList LCURLY StatementList RCURLY;
 
-MethodSignature			::= (MethodSignature) MethodType IDENT:methodName LPAREN FormPars RPAREN;
+MethodSignature			::= (MethodSignature) MethodType IDENT:methodName LPAREN FormPars;
 
 MethodType				::= (VoidYes) VOID
 							|
@@ -219,12 +226,16 @@ MethodType				::= (VoidYes) VOID
 							
 FormPars				::= (FormParsYes) FormParList
 							|
-							(FormParsNo) /* epsilon */
+							(FormParsNo) RPAREN
 							;
 							
-FormParList				::= (FormParMultiple) FormParList COMMA FormPar
+FormParList				::= (FormParMultiple) FormPar COMMA FormParList
 							|
-							(FormParSingle) FormPar
+							(FormParSingle) FormPar RPAREN
+							|
+							(FormParErrorComma) error COMMA FormParList
+							|
+							(FormParErrorParen) error RPAREN
 							;
 							
 FormPar					::= (FormPar) Type IDENT:formParName FormParArray;
@@ -241,13 +252,13 @@ StatementList			::= (StatementYes) Statement StatementList
 							(StatementNo) /* epsilon */
 							;
 							
-Statement				::= (StatementDesignator) DesignatorStatement SEMI
+Statement				::= (StatementDesignator) DesignatorStatement
 							|
-							(StatementIfElse) IF CondStart LPAREN Condition RPAREN Statement ElseHeader Statement
+							(StatementIfElse) IF CondStart LPAREN Condition Statement ElseHeader Statement
 							|
-							(StatementIf) IF CondStart LPAREN Condition RPAREN Statement
+							(StatementIf) IF CondStart LPAREN Condition Statement
 							|
-							(StatementWhile) WhileHeader CondStart LPAREN Condition RPAREN Statement
+							(StatementWhile) WhileHeader CondStart LPAREN Condition Statement
 							|
 							(StatementBreak) BREAK SEMI
 							|
@@ -265,7 +276,7 @@ Statement				::= (StatementDesignator) DesignatorStatement SEMI
 							|
 							(StatementBlock) LCURLY StatementList RCURLY
 							;
-							
+
 CondStart				::= (CondStart) /* epsilon */;							
 							
 ElseHeader				::= (ElseHeader) ELSE;								
@@ -281,13 +292,15 @@ ForeachHeader			::= (ForeachHeader) Designator DOT FOREACH LPAREN IDENT:element;
 
 //------------------------------------------------------------------------											
 
-DesignatorStatement		::= (DesignatorAssignOp) Designator AssignOp Expr
+DesignatorStatement		::= (DesignatorAssignOp) Designator AssignOp Expr SEMI
 							|
-							(DesignatorMethod) MethodCall
+							(DesignatorAssignOpError) error SEMI
 							|
-							(DesignatorPostfixOp) Designator PostfixOp
+							(DesignatorMethod) MethodCall SEMI
 							|
-							(DesignatorMultiple) LSQUARE DesignatorList RSQUARE AssignOp Designator
+							(DesignatorPostfixOp) Designator PostfixOp SEMI
+							|
+							(DesignatorMultiple) LSQUARE DesignatorList RSQUARE AssignOp Designator SEMI
 							;	
 
 Designator				::= (DesignatorClass) Designator DOT IDENT:fieldName
@@ -372,7 +385,9 @@ NewClass				::= (NewClass) NEW Type;
 
 Condition				::= (CondTermMultiple) CondTerm Or Condition
 							|
-							(CondTermSingle) CondTerm
+							(CondTermSingle) CondTerm RPAREN
+							|
+							(ConditionError) error RPAREN
 							;
 							
 CondTerm				::= (CondFactMultiple) CondFact AND CondTerm

@@ -1,0 +1,26 @@
+program syntax_error_recovery
+
+int -, a;
+int b, +;
+
+class A extends + {
+
+}
+
+class B + {
+
+}
+
+{
+	void m1(int a, +) {
+	
+	}
+	
+	void m2(+) {
+	
+	}
+	
+	void main() int c; {
+		c = +;
+	}
+}
