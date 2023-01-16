@@ -1,0 +1,53 @@
+program symbol_detection
+
+const int a = 1;
+
+int b;
+
+int e[];
+
+class H {
+	int i;
+	{
+		H() { print(7); }
+		
+		void j() { print(9); }
+	}
+}
+
+{
+
+	void f(int g) {
+		g = 6;
+		print(g);
+	}
+
+	int d() {
+		return 4;
+	}
+
+	void main() int c; H h; {
+		print(a);
+		
+		b = 2;
+		print(b);
+		
+		c = 3;
+		print(c);
+		
+		print(d());
+		
+		e = new int[1];
+		
+		e[0] = 5;
+		print(e[0]);
+		
+		h = new H();
+		
+		h.i = 8;
+		print(h.i);
+		
+		h.j();
+	}
+
+}

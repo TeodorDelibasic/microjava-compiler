@@ -1,0 +1,55 @@
+program polymorphism
+
+class A {
+	
+	int field;
+	
+	{
+		void ispisi() {
+			print(2);
+		}
+	}
+}
+
+class B extends A {
+	
+	int a;
+	
+	{	
+		B() { a = 4; }
+		
+		void ispisi() int a; {
+			a = 3;
+			print(a);
+			print(this.a);
+		}
+	}
+}
+
+class C extends B {
+	
+	{
+		C() { print(1); field = 5; }
+		C(int c) { this.field = c; }
+		
+		void ispisi() {
+			print(field);
+		} 
+	}
+
+}
+
+{
+	void main() A arr[], elem; {
+		arr = new A[4];
+		
+		arr[0] = new A();
+		arr[1] = new B();
+		arr[2] = new C();
+		arr[3] = new C(6);
+		
+		arr.foreach(elem => {
+			elem.ispisi();
+		});
+	}
+}

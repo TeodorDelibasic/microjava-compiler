@@ -1,0 +1,40 @@
+program matrix
+
+class Matrica {
+	int niz[];
+}
+
+Matrica m[], elem;
+int e; 
+
+{
+	void main() {
+		m = new Matrica[3];
+		m[0] = new Matrica();
+		m[1] = new Matrica();
+		m[2] = new Matrica();
+		
+		
+		m[0].niz = new int[3];
+		m[0].niz[0] = 1;
+		m[0].niz[1] = 2;
+		m[0].niz[2] = 3;
+		
+		m[1].niz = new int[3];
+		m[1].niz[0] = 4;
+		m[1].niz[1] = 5;
+		m[1].niz[2] = 6;
+		
+		m[2].niz = new int[3];
+		m[2].niz[0] = 7;
+		m[2].niz[1] = 8;
+		m[2].niz[2] = 9;
+		
+		m.foreach(elem => {
+			elem.niz.foreach(e => {
+				print(e);
+			});
+			print(eol);
+		});
+	}
+}

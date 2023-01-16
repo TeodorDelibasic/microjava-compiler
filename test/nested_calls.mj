@@ -1,0 +1,25 @@
+program nested_calls
+
+class A {
+	int x;
+	{
+		A() { x = 1; print(2); }
+	}
+}
+
+class B extends A {
+	int y;
+	{
+		B(A a) { y = 3; print(4); }
+	}
+}
+
+B b;
+
+{
+	void main() {
+		b = new B(new A());
+		
+		print(b.y);
+	}
+}
