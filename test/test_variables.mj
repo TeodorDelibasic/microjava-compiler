@@ -1,0 +1,23 @@
+program test_variables
+const int TEN = 10;
+int x, y, z;
+{
+	void main()
+	{
+		x = 5;
+		y = 3;
+		z = x + y * TEN;
+		print(z);
+		print(eol);
+		x = z - 1;
+		print(x);
+		print(eol);
+		x++;
+		print(x);
+		print(eol);
+		x--;
+		x--;
+		print(x);
+		print(eol);
+	}
+}

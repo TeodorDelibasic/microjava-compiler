@@ -7,7 +7,7 @@ src/rs/ac/bg/etf/pp1/ast
 spec/mjparser_astbuild.cup
 logs/
 test/program.mj
-test/*.obj
+**/*.obj
 *.java~
 .project
 .classpath

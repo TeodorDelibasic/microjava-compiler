@@ -1,5 +1,7 @@
 package rs.ac.bg.etf.pp2.ir;
 
+import java.util.List;
+import rs.ac.bg.etf.pp1.VirtualMethods;
 import rs.etf.pp1.symboltable.concepts.Obj;
 
 public class IRInstructions {
@@ -343,43 +345,43 @@ public class IRInstructions {
         }
     }
 
-    /** CALL dst, method — static method call */
+    /** CALL dst, method, argTemps — static method call */
     public static class Call extends IRInstruction {
         public final int dst;       // -1 if void
         public final Obj method;
-        public final int argCount;
+        public final List<Integer> argTemps;
 
-        public Call(int dst, Obj method, int argCount) {
+        public Call(int dst, Obj method, List<Integer> argTemps) {
             super(Op.CALL);
             this.dst = dst;
             this.method = method;
-            this.argCount = argCount;
+            this.argTemps = argTemps;
         }
 
         public String toString() {
             String result = dst >= 0 ? "t" + dst + " = " : "";
-            return "    " + result + "CALL " + method.getName() + " (" + argCount + " args)";
+            return "    " + result + "CALL " + method.getName() + " (" + argTemps.size() + " args)";
         }
     }
 
-    /** INVOKE_VIRTUAL dst, objTemp, methodName — virtual method call */
+    /** INVOKE_VIRTUAL dst, objTemp, methodName, argTemps — virtual method call */
     public static class InvokeVirtual extends IRInstruction {
         public final int dst;       // -1 if void
         public final int objTemp;
         public final String methodName;
-        public final int argCount;
+        public final List<Integer> argTemps; // regular args (not including 'this')
 
-        public InvokeVirtual(int dst, int objTemp, String methodName, int argCount) {
+        public InvokeVirtual(int dst, int objTemp, String methodName, List<Integer> argTemps) {
             super(Op.INVOKE_VIRTUAL);
             this.dst = dst;
             this.objTemp = objTemp;
             this.methodName = methodName;
-            this.argCount = argCount;
+            this.argTemps = argTemps;
         }
 
         public String toString() {
             String result = dst >= 0 ? "t" + dst + " = " : "";
-            return "    " + result + "INVOKE_VIRTUAL t" + objTemp + "." + methodName + " (" + argCount + " args)";
+            return "    " + result + "INVOKE_VIRTUAL t" + objTemp + "." + methodName + " (" + (argTemps.size() + 1) + " args)";
         }
     }
 
@@ -450,14 +452,18 @@ public class IRInstructions {
     /** TVF_INIT — initialize virtual method table for a class */
     public static class TvfInit extends IRInstruction {
         public final String className;
+        public final int startAddress;
         public final String[] methodNames;
         public final Obj[] methods;
+        public final VirtualMethods virtualMethods; // for resolving inherited addresses
 
-        public TvfInit(String className, String[] methodNames, Obj[] methods) {
+        public TvfInit(String className, int startAddress, String[] methodNames, Obj[] methods, VirtualMethods virtualMethods) {
             super(Op.TVF_INIT);
             this.className = className;
+            this.startAddress = startAddress;
             this.methodNames = methodNames;
             this.methods = methods;
+            this.virtualMethods = virtualMethods;
         }
 
         public String toString() {

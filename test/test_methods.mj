@@ -1,0 +1,26 @@
+program test_methods
+int result;
+{
+	int add(int a, int b)
+	{
+		return a + b;
+	}
+
+	int square(int n)
+	{
+		return n * n;
+	}
+
+	void main()
+	{
+		result = add(3, 4);
+		print(result);
+		print(eol);
+
+		print(square(5));
+		print(eol);
+
+		print(add(square(3), square(4)));
+		print(eol);
+	}
+}

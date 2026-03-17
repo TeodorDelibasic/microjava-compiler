@@ -1,0 +1,32 @@
+program test_foreach_block
+int arr[];
+int elem, sum, product;
+{
+	void main()
+	{
+		arr = new int[4];
+		arr[0] = 1;
+		arr[1] = 2;
+		arr[2] = 3;
+		arr[3] = 4;
+
+		sum = 0;
+		product = 1;
+		arr.foreach(elem => {
+			sum = sum + elem;
+			product = product * elem;
+		});
+		print(sum);
+		print(eol);
+		print(product);
+		print(eol);
+
+		sum = 0;
+		arr.foreach(elem => {
+			if (elem > 2)
+				sum = sum + elem;
+		});
+		print(sum);
+		print(eol);
+	}
+}

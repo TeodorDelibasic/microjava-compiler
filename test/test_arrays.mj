@@ -1,0 +1,29 @@
+program test_arrays
+int arr[];
+int i, sum, elem;
+{
+	void main()
+	{
+		arr = new int[5];
+		i = 0;
+		while (i < 5) {
+			arr[i] = (i + 1) * 10;
+			i++;
+		}
+
+		i = 0;
+		while (i < 5) {
+			print(arr[i]);
+			i++;
+		}
+		print(eol);
+
+		sum = 0;
+		arr.foreach(elem => sum = sum + elem;);
+		print(sum);
+		print(eol);
+
+		print(sum + 1);
+		print(eol);
+	}
+}

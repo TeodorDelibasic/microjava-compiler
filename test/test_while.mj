@@ -1,0 +1,33 @@
+program test_while
+int i, sum;
+{
+	void main()
+	{
+		i = 0;
+		sum = 0;
+		while (i < 5) {
+			sum = sum + i;
+			i++;
+		}
+		print(sum);
+		print(eol);
+
+		i = 0;
+		while (i < 10) {
+			if (i == 5) break;
+			i++;
+		}
+		print(i);
+		print(eol);
+
+		i = 0;
+		sum = 0;
+		while (i < 10) {
+			i++;
+			if (i % 2 == 0) continue;
+			sum = sum + i;
+		}
+		print(sum);
+		print(eol);
+	}
+}

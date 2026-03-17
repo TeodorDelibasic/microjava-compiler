@@ -1,0 +1,28 @@
+program test_bool_var
+bool flag, result;
+int x;
+{
+	void main()
+	{
+		flag = true;
+		if (flag) print(1);
+		else print(0);
+		print(eol);
+
+		flag = false;
+		if (flag) print(1);
+		else print(0);
+		print(eol);
+
+		x = 5;
+		result = true;
+		if (result && x > 3) print(1);
+		else print(0);
+		print(eol);
+
+		result = false;
+		if (result || x > 3) print(1);
+		else print(0);
+		print(eol);
+	}
+}

@@ -1,0 +1,25 @@
+program test_local_vars
+int g;
+{
+	int compute(int a, int b)
+		int local;
+	{
+		local = a * 2 + b;
+		return local;
+	}
+
+	void main()
+		int x, y;
+	{
+		g = 100;
+		x = 10;
+		y = compute(x, g);
+		print(y);
+		print(eol);
+
+		x = compute(1, 2);
+		y = compute(3, 4);
+		print(x + y);
+		print(eol);
+	}
+}

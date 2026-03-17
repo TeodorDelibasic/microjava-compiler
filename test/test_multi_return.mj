@@ -1,0 +1,40 @@
+program test_multi_return
+{
+	int abs(int x)
+	{
+		if (x < 0) return 0 - x;
+		return x;
+	}
+
+	int clamp(int x, int lo, int hi)
+	{
+		if (x < lo) return lo;
+		if (x > hi) return hi;
+		return x;
+	}
+
+	int sign(int x)
+	{
+		if (x > 0) return 1;
+		if (x < 0) return 0 - 1;
+		return 0;
+	}
+
+	void main()
+	{
+		print(abs(5));
+		print(abs(0 - 3));
+		print(abs(0));
+		print(eol);
+
+		print(clamp(5, 0, 10));
+		print(clamp(0 - 3, 0, 10));
+		print(clamp(15, 0, 10));
+		print(eol);
+
+		print(sign(42));
+		print(sign(0 - 7));
+		print(sign(0));
+		print(eol);
+	}
+}

@@ -9,6 +9,9 @@ import java.io.Reader;
 import java_cup.runtime.Symbol;
 import rs.ac.bg.etf.pp1.ast.Program;
 import rs.ac.bg.etf.pp2.CodeReset;
+import rs.ac.bg.etf.pp2.IRCodeEmitter;
+import rs.ac.bg.etf.pp2.IRGenerator;
+import rs.ac.bg.etf.pp2.ir.IRProgram;
 import rs.etf.pp1.mj.runtime.Code;
 
 public class Compiler {
@@ -65,21 +68,19 @@ public class Compiler {
 			CodeReset.reset();
 			Code.dataSize = semanticAnalyzer.getDataSize();
 
-			// TODO: IRGenerator + IRCodeEmitter
-			// IRGenerator irGen = new IRGenerator();
-			// program.traverseBottomUp(irGen);
-			// IRProgram irProgram = irGen.getProgram();
-			// System.out.println(irProgram);  // dump IR
-			// IRCodeEmitter emitter = new IRCodeEmitter();
-			// emitter.emit(irProgram);
+			IRGenerator irGen = new IRGenerator();
+			program.traverseBottomUp(irGen);
+			IRProgram irProgram = irGen.getProgram();
+			System.out.println(irProgram);
 
 			String irPath = destination.getPath().replace(".obj", "_ir.obj");
 			File destinationIR = new File(irPath);
 			if (destinationIR.exists()) destinationIR.delete();
 
-			// Code.write(new FileOutputStream(destinationIR));
-			// System.out.println("Path 2 (IR):     SUCCESSFUL COMPILATION -> " + destinationIR.getName());
-			System.out.println("Path 2 (IR):     NOT YET IMPLEMENTED");
+			IRCodeEmitter emitter = new IRCodeEmitter();
+			emitter.emit(irProgram);
+			Code.write(new FileOutputStream(destinationIR));
+			System.out.println("Path 2 (IR):     SUCCESSFUL COMPILATION -> " + destinationIR.getName());
 
 		} catch (Exception e) {
 			e.printStackTrace();
