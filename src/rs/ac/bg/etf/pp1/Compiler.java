@@ -13,6 +13,7 @@ import rs.ac.bg.etf.pp2.IRCodeEmitter;
 import rs.ac.bg.etf.pp2.IRGenerator;
 import rs.ac.bg.etf.pp2.ir.IRProgram;
 import rs.ac.bg.etf.pp2.opt.ConstantFolding;
+import rs.ac.bg.etf.pp2.opt.ConstantPropagation;
 import rs.ac.bg.etf.pp2.opt.DeadCodeElimination;
 import rs.etf.pp1.mj.runtime.Code;
 
@@ -78,6 +79,8 @@ public class Compiler {
 
 			
 			new ConstantFolding().optimize(irProgram);
+			new ConstantPropagation().optimize(irProgram);
+			new ConstantFolding().optimize(irProgram);  // second pass catches newly propagated constants
 			new DeadCodeElimination().optimize(irProgram);
 
 			int after = irProgram.countInstructions();

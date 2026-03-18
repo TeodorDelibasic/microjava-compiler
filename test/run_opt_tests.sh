@@ -86,6 +86,9 @@ run_opt_test "constant_folding" "test/opt_constant_folding.mj" "" 10
 # Dead code: unused variables and folded constants -> instructions removed
 run_opt_test "dead_code" "test/opt_dead_code.mj" "" 5
 
+# Constant propagation: variable assignments with known values propagated through uses
+run_opt_test "const_propagation" "test/opt_const_propagation.mj" "" 8
+
 # Mixed: constants in conditions, foreach, array sizing
 run_opt_test "mixed" "test/opt_mixed.mj" "" 5
 
