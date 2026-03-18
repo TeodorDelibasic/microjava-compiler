@@ -1,0 +1,28 @@
+program test_chars
+char c;
+char arr[];
+int i;
+{
+	void main()
+	{
+		c = 'A';
+		print(c);
+		print(ord(c));
+		print(eol);
+
+		c = chr(66);
+		print(c);
+		print(eol);
+
+		arr = new char[3];
+		arr[0] = 'X';
+		arr[1] = 'Y';
+		arr[2] = 'Z';
+		i = 0;
+		while (i < 3) {
+			print(arr[i]);
+			i++;
+		}
+		print(eol);
+	}
+}

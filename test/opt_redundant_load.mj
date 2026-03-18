@@ -1,0 +1,20 @@
+program opt_redundant_load
+int x, y;
+{
+	void main()
+	{
+		x = 10;
+		y = x + x;
+		print(y);
+		print(eol);
+
+		y = x * x + x;
+		print(y);
+		print(eol);
+
+		x = 5;
+		y = x + 1;
+		print(y);
+		print(eol);
+	}
+}

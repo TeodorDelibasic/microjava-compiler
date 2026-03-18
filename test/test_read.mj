@@ -1,0 +1,23 @@
+program test_read
+int x, y;
+int arr[];
+{
+	void main()
+	{
+		read(x);
+		read(y);
+		print(x + y);
+		print(eol);
+		print(x * y);
+		print(eol);
+
+		arr = new int[3];
+		read(arr[0]);
+		read(arr[1]);
+		arr[2] = arr[0] + arr[1];
+		print(arr[0]);
+		print(arr[1]);
+		print(arr[2]);
+		print(eol);
+	}
+}

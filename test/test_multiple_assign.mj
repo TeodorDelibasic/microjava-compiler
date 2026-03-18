@@ -1,0 +1,24 @@
+program test_multiple_assign
+int arr[];
+int a, b, c;
+{
+	void main()
+	{
+		arr = new int[4];
+		arr[0] = 10;
+		arr[1] = 20;
+		arr[2] = 30;
+		arr[3] = 40;
+
+		[a, b, c] = arr;
+		print(a);
+		print(b);
+		print(c);
+		print(eol);
+
+		[a, , c] = arr;
+		print(a);
+		print(c);
+		print(eol);
+	}
+}

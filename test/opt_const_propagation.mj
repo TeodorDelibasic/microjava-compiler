@@ -1,0 +1,32 @@
+program opt_const_propagation
+int x, y, z;
+{
+	void main()
+		int a, b, c;
+	{
+		a = 10;
+		b = 20;
+		c = a + b;
+		print(c);
+		print(eol);
+
+		x = 3;
+		y = x * x;
+		z = y + x;
+		print(z);
+		print(eol);
+
+		a = 7;
+		b = a * 2;
+		c = b + a;
+		print(c);
+		print(eol);
+
+		x = 100;
+		y = x / 4;
+		z = x % 7;
+		print(y);
+		print(z);
+		print(eol);
+	}
+}

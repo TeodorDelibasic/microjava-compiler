@@ -1,0 +1,24 @@
+program test_array_postfix
+int arr[];
+int i;
+{
+	void main()
+	{
+		arr = new int[3];
+		arr[0] = 10;
+		arr[1] = 20;
+		arr[2] = 30;
+
+		arr[0]++;
+		arr[1]--;
+		arr[2]++;
+		arr[2]++;
+
+		i = 0;
+		while (i < 3) {
+			print(arr[i]);
+			i++;
+		}
+		print(eol);
+	}
+}

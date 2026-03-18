@@ -1,0 +1,26 @@
+program opt_jump_chain
+int x, y;
+{
+	void main()
+	{
+		x = 5;
+		y = 10;
+
+		if (x == 5) print(1);
+		else print(0);
+
+		if (x > 3) print(1);
+		else print(0);
+
+		if (x == 5 && y == 10) print(1);
+		else print(0);
+
+		if (x == 1 || y == 10) print(1);
+		else print(0);
+
+		if (x == 5 && y == 10 || x == 1 && y == 20) print(1);
+		else print(0);
+
+		print(eol);
+	}
+}

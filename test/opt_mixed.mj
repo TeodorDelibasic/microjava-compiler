@@ -1,0 +1,30 @@
+program opt_mixed
+const int SIZE = 10;
+const int HALF = 5;
+int arr[];
+int i, sum, elem;
+{
+	void main()
+	{
+		arr = new int[SIZE];
+		i = 0;
+		while (i < SIZE) {
+			arr[i] = i * 2 + 1;
+			i++;
+		}
+
+		sum = 0;
+		arr.foreach(elem => sum = sum + elem;);
+		print(sum);
+		print(eol);
+
+		print(SIZE * HALF);
+		print(SIZE + HALF * 2);
+		print(SIZE * SIZE - HALF * HALF);
+		print(eol);
+
+		if (3 + 4 == 7) print(1);
+		else print(0);
+		print(eol);
+	}
+}

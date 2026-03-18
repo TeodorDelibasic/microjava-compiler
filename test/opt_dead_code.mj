@@ -1,0 +1,29 @@
+program opt_dead_code
+int x, y, unused;
+{
+	int square(int n)
+	{
+		return n * n;
+	}
+
+	void main()
+		int a, b, c, dead;
+	{
+		a = 5;
+		b = 10;
+		dead = a + b;
+		c = a * b;
+		print(c);
+		print(eol);
+
+		x = square(3);
+		y = square(4);
+		unused = x + y;
+		print(x);
+		print(y);
+		print(eol);
+
+		print(2 + 3 * 4 + 5 - 1);
+		print(eol);
+	}
+}

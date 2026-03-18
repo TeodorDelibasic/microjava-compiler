@@ -1,0 +1,48 @@
+program test_nested_control
+int i, j, count;
+{
+	void main()
+	{
+		count = 0;
+		i = 0;
+		while (i < 4) {
+			j = 0;
+			while (j < 4) {
+				if (i == j) {
+					count++;
+				}
+				j++;
+			}
+			i++;
+		}
+		print(count);
+		print(eol);
+
+		count = 0;
+		i = 0;
+		while (i < 5) {
+			j = 0;
+			while (j < 5) {
+				if (j == 3) break;
+				count++;
+				j++;
+			}
+			if (i == 2) {
+				i++;
+				continue;
+			}
+			i++;
+		}
+		print(count);
+		print(eol);
+
+		i = 10;
+		if (i > 5) {
+			if (i > 8) {
+				if (i > 9) print(1);
+				else print(0);
+			} else print(0);
+		} else print(0);
+		print(eol);
+	}
+}
