@@ -29,7 +29,10 @@ jobs:
         run: find src -name "*.java" -exec sed -i 's/src\.rs\.ac\.bg\.etf\.pp1\.ast/rs.ac.bg.etf.pp1.ast/g' {} +
 
       - name: Compile
-        run: javac -cp "lib/JFlex.jar:lib/cup_v10k.jar:lib/symboltable-1-1.jar:lib/mj-runtime-1.1.jar" src/rs/ac/bg/etf/pp2/ir/*.java src/rs/ac/bg/etf/pp2/*.java src/rs/ac/bg/etf/pp1/*.java src/rs/ac/bg/etf/pp1/ast/*.java
+        run: javac -cp "lib/JFlex.jar:lib/cup_v10k.jar:lib/symboltable-1-1.jar:lib/mj-runtime-1.1.jar" src/rs/ac/bg/etf/pp2/opt/*.java src/rs/ac/bg/etf/pp2/ir/*.java src/rs/ac/bg/etf/pp2/*.java src/rs/ac/bg/etf/pp1/*.java src/rs/ac/bg/etf/pp1/ast/*.java
 
       - name: Run E2E tests
         run: bash test/run_tests.sh
+
+      - name: Run optimization verification tests
+        run: bash test/run_opt_tests.sh

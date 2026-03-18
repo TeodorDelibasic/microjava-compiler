@@ -12,6 +12,8 @@ import rs.ac.bg.etf.pp2.CodeReset;
 import rs.ac.bg.etf.pp2.IRCodeEmitter;
 import rs.ac.bg.etf.pp2.IRGenerator;
 import rs.ac.bg.etf.pp2.ir.IRProgram;
+import rs.ac.bg.etf.pp2.opt.ConstantFolding;
+import rs.ac.bg.etf.pp2.opt.DeadCodeElimination;
 import rs.etf.pp1.mj.runtime.Code;
 
 public class Compiler {
@@ -64,14 +66,25 @@ public class Compiler {
 
 			System.out.println("Path 1 (direct): SUCCESSFUL COMPILATION -> " + destination.getName());
 
-			// ====== Path 2: AST -> IR -> Bytecode ======
+			// Path 2: IR generation, optimization, code emission
 			CodeReset.reset();
 			Code.dataSize = semanticAnalyzer.getDataSize();
 
 			IRGenerator irGen = new IRGenerator();
 			program.traverseBottomUp(irGen);
 			IRProgram irProgram = irGen.getProgram();
-			System.out.println(irProgram);
+
+			int before = irProgram.countInstructions();
+
+			
+			new ConstantFolding().optimize(irProgram);
+			new DeadCodeElimination().optimize(irProgram);
+
+			int after = irProgram.countInstructions();
+			if (before != after) {
+				System.out.println("IR optimization: " + before + " -> " + after + " instructions ("
+						+ (before - after) + " removed)");
+			}
 
 			String irPath = destination.getPath().replace(".obj", "_ir.obj");
 			File destinationIR = new File(irPath);

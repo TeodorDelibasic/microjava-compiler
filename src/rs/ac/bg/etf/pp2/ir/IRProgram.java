@@ -50,6 +50,16 @@ public class IRProgram {
         return tvfEntries;
     }
 
+    public int countInstructions() {
+        int count = 0;
+        for (IRMethod m : methods) {
+            for (IRBasicBlock b : m.getBlocks()) {
+                count += b.getInstructions().size();
+            }
+        }
+        return count;
+    }
+
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("=== IR Program: ").append(name).append(" ===\n");
