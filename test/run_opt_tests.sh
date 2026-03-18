@@ -95,6 +95,9 @@ run_opt_test "strength_reduction" "test/opt_strength_reduction.mj" "" 3
 # Redundant load elimination: same variable loaded twice, arr[i]=arr[i]*k
 run_opt_test "redundant_load" "test/opt_redundant_load.mj" "" 3
 
+# Jump chain simplification: if/else chains, &&/|| with intermediate blocks
+run_opt_test "jump_chain" "test/opt_jump_chain.mj" "" 5
+
 # Mixed: constants in conditions, foreach, array sizing
 run_opt_test "mixed" "test/opt_mixed.mj" "" 5
 
