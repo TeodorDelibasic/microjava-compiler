@@ -92,6 +92,9 @@ run_opt_test "const_propagation" "test/opt_const_propagation.mj" "" 8
 # Strength reduction: mul by 0/2, rem by 1, div of 0, sub self
 run_opt_test "strength_reduction" "test/opt_strength_reduction.mj" "" 3
 
+# Redundant load elimination: same variable loaded twice, arr[i]=arr[i]*k
+run_opt_test "redundant_load" "test/opt_redundant_load.mj" "" 3
+
 # Mixed: constants in conditions, foreach, array sizing
 run_opt_test "mixed" "test/opt_mixed.mj" "" 5
 

@@ -15,6 +15,7 @@ import rs.ac.bg.etf.pp2.ir.IRProgram;
 import rs.ac.bg.etf.pp2.opt.ConstantFolding;
 import rs.ac.bg.etf.pp2.opt.ConstantPropagation;
 import rs.ac.bg.etf.pp2.opt.DeadCodeElimination;
+import rs.ac.bg.etf.pp2.opt.RedundantLoadElimination;
 import rs.ac.bg.etf.pp2.opt.StrengthReduction;
 import rs.etf.pp1.mj.runtime.Code;
 
@@ -83,6 +84,7 @@ public class Compiler {
 			new ConstantPropagation().optimize(irProgram);
 			new ConstantFolding().optimize(irProgram);
 			new StrengthReduction().optimize(irProgram);
+			new RedundantLoadElimination().optimize(irProgram);
 			new DeadCodeElimination().optimize(irProgram);
 
 			int after = irProgram.countInstructions();
