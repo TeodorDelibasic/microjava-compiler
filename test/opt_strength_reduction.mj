@@ -1,0 +1,28 @@
+program opt_strength_reduction
+int x, y;
+{
+	void main()
+		int a;
+	{
+		x = 7;
+
+		a = x * 2;
+		print(a);
+
+		a = 2 * x;
+		print(a);
+
+		a = x * 0;
+		print(a);
+
+		a = x % 1;
+		print(a);
+
+		a = 0 / x;
+		print(a);
+
+		y = x - x;
+		print(y);
+		print(eol);
+	}
+}
